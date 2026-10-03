@@ -12,6 +12,23 @@
 #
 # An installation token cannot be stored as a repository secret: it expires
 # after one hour. It is minted per run from the app id and private key instead.
+#
+# Upgrading THIS file is a special case. The token scoping below decides whether
+# the sync may write workflow files at all, so a repository running an older copy
+# whose token was scoped too narrowly cannot receive a workflow change through
+# the sync:
+#
+#   refusing to allow a GitHub App to create or update workflow
+#   `.github/workflows/x.yml` without `workflows` permission
+#
+# Such a repository must be brought forward once by hand:
+#
+#   copier update --defaults --trust
+#
+# Pre-applying the change by hand does NOT help: Copier applies the template's
+# diff as a patch, so a file that already carries the new content in the patched
+# region makes the patch fail to apply, and the sync reports a conflict on a file
+# that is in fact correct.
 name: copier-sync
 
 on:
