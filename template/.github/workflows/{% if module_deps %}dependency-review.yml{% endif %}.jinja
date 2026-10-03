@@ -7,13 +7,18 @@ name: dependency-review
 on:
   pull_request:
 
+concurrency:
+  group: dependency-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 permissions:
-  contents: read
+  contents: read # read the dependency manifests being changed
 
 jobs:
   dependency-review:
+    name: Review dependency changes
     runs-on: ubuntu-latest
-    # Public repos always have it; private repos must opt in via a variable.
+    # Public repositories always have it; private ones must opt in.
     if: ${{ !github.event.repository.private || vars.GHAS_ENABLED == 'true' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4

@@ -16,42 +16,95 @@ on:
     - cron: "0 6 * * 1"
   workflow_dispatch:
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {} # the job below declares exactly what it needs
+
+# Never let two syncs race for the same branch.
+concurrency:
+  group: copier-sync
+  cancel-in-progress: false
 
 jobs:
   sync:
+    name: Sync with the template
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write # push the sync branch
+      pull-requests: write # open and update the sync pull request
+    # Rollout switch. Unset means enabled. Set the repository variable
+    # COPIER_SYNC_ENABLED to "false" to pause syncing for this repository;
+    # manual runs still proceed, so a paused repository can be synced
+    # deliberately.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      vars.COPIER_SYNC_ENABLED != 'false'
     steps:
       # persist-credentials: false keeps the job's GITHUB_TOKEN out of the
       # local git config, where later steps could leak it.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          fetch-depth: 0
           persist-credentials: false
 
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
-        with:
-          python-version: "3.x"
-
+      # Copier is pinned exactly. It renders the pull request, so a different
+      # version could produce diffs unrelated to the template change and make
+      # every sync PR unreviewable.
       - name: Install copier
-        run: pipx install copier
+        run: pipx install "copier==9.18.2"
 
+      # --conflict=rej writes unresolvable hunks to .rej files rather than
+      # leaving merge markers in the files. A diverged repository must fail the
+      # sync, never produce a silently wrong merge.
       - name: Update from the pinned template version
-        run: copier update --defaults --trust
+        run: copier update --defaults --trust --conflict=rej
+
+      - name: Fail if the template conflicted
+        run: |
+          conflicts="$(find . -name '*.rej' -not -path './.git/*')"
+          if [ -n "$conflicts" ]; then
+            echo "::error title=Template sync conflicted::Repository has diverged."
+            printf '%s\n' "$conflicts"
+            echo "Generated files are never hand-edited."
+            echo "Move the change out of a generated path, then re-run this workflow."
+            exit 1
+          fi
 
       - name: Open a pull request
+        # peter-evans/create-pull-request rather than `gh pr create`, which
+        # zizmor suggests at low confidence: this action is a no-op when there
+        # is nothing to sync and updates an existing pull request instead of
+        # failing, which is what makes a re-run safe.
+        id: pr
         uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6
         with:
           token: ${{ secrets.COPIER_SYNC_TOKEN }}
           branch: chore/copier-sync
           delete-branch: true
-          title: "chore: sync with repo-template"
-          commit-message: "chore: sync with repo-template"
+          labels: template-sync
+          title: "chore: sync with the repository template"
+          commit-message: "chore: sync with the repository template"
           body: |
             Automated `copier update` against the template version pinned in
             `.copier-answers.yml`.
 
-            Generated files are never hand-edited, so a conflict here means
-            this repository has diverged from the template. Resolve it by
-            moving the change out of a generated path.
+            Generated files are never hand-edited, so a conflict here means this
+            repository has diverged from the template. Resolve it by moving the
+            change out of a generated path.
+
+            Because `.github/settings.yml` is a file, merging this pull request
+            also applies any label or branch-protection changes to this
+            repository through the Settings app.
+
+      # Opt in per repository with the variable COPIER_SYNC_AUTO_MERGE=true.
+      # Off by default, so the first sync across a fleet is always reviewed.
+      - name: Enable auto-merge on green
+        if: >-
+          steps.pr.outputs.pull-request-number &&
+          vars.COPIER_SYNC_AUTO_MERGE == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.COPIER_SYNC_TOKEN }}
+          # Passed through the environment rather than interpolated into the
+          # script body: ${{ }} inside `run:` is expanded before the shell sees
+          # it, which is a template-injection path for untrusted values.
+          PR_NUMBER: ${{ steps.pr.outputs.pull-request-number }}
+        run: gh pr merge --auto --squash "$PR_NUMBER"

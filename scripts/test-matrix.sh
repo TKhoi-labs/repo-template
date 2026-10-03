@@ -181,6 +181,87 @@ for entry in "${CONFIGS[@]}"; do
 done
 
 # ---------------------------------------------------------------------------
+# 4. A _migrations entry rewrites a recorded answer on update
+#
+# This is the documented way to roll a new workflow_ref across a fleet:
+# `copier update --defaults` never re-asks a question, so a new SHA has to be
+# migrated into .copier-answers.yml explicitly (ADR-0009). Verified rather than
+# assumed, because the decision to pin workflow_ref to a SHA depends on it.
+# ---------------------------------------------------------------------------
+echo "== answer migration =="
+MIG="$BUILD/migrate"
+SHA_A=1111111111111111111111111111111111111111
+SHA_B=2222222222222222222222222222222222222222
+MIGSRC="$MIG/src"
+MIGDST="$MIG/dst"
+
+rm -rf "$MIG"
+mkdir -p "$MIGSRC"
+rsync -a --exclude .git --exclude .build "$ROOT/" "$MIGSRC/"
+(
+  cd "$MIGSRC"
+  git init -q .
+  git add -A
+  git -c user.email=test@example.invalid -c user.name=Tester commit -qm v0.1
+  git tag v0.1.0
+) >/dev/null 2>&1
+
+# shellcheck disable=SC2086
+$COPIER copy --defaults -d project_name=migrate -d org_slug=example \
+  -d workflow_ref="$SHA_A" -d module_commits=false -d module_deps=false \
+  -d module_docs=false -d module_contributing=false -d module_env=false \
+  -d module_security=false -d module_release=false -d module_ops=false \
+  "$MIGSRC" "$MIGDST" >/dev/null 2>&1
+(
+  cd "$MIGDST"
+  git init -q .
+  git add -A
+  git -c user.email=test@example.invalid -c user.name=Tester commit -qm initial
+) >/dev/null 2>&1
+
+# The template moves on: a new release adds a migration that rewrites the
+# recorded answer before the project is re-rendered.
+cat >>"$MIGSRC/copier.yml" <<'YAML'
+
+# Fleet rollout: copier update --defaults never re-asks a question, so a new
+# workflow_ref has to be migrated into the recorded answers explicitly.
+_migrations:
+  - version: v0.2.0
+    before:
+      - >-
+        sed -i "s/^workflow_ref:.*/workflow_ref: '__SHA__'/" .copier-answers.yml
+YAML
+sed -i "s/__SHA__/$SHA_B/" "$MIGSRC/copier.yml"
+(
+  cd "$MIGSRC"
+  git add -A
+  git -c user.email=test@example.invalid -c user.name=Tester commit -qm v0.2
+  git tag v0.2.0
+) >/dev/null 2>&1
+
+rc=0
+# shellcheck disable=SC2086
+(cd "$MIGDST" && $COPIER update --defaults --trust .) >"$MIG/update.log" 2>&1 || rc=$?
+if [ "$rc" -eq 0 ]; then
+  ok "migration: copier update exits 0"
+else
+  bad "migration: copier update exited $rc"
+  tail -3 "$MIG/update.log" | sed 's/^/        /'
+fi
+
+if grep -q "$SHA_B" "$MIGDST/.copier-answers.yml"; then
+  ok "migration: recorded answer rewritten"
+else
+  bad "migration: answers still record the old SHA"
+fi
+
+if grep -q "$SHA_B" "$MIGDST/.github/workflows/ci.yml"; then
+  ok "migration: ci.yml re-rendered with the new SHA"
+else
+  bad "migration: ci.yml still uses the old SHA"
+fi
+
+# ---------------------------------------------------------------------------
 echo
 printf 'passed %d, failed %d\n' "$pass" "$fail"
 [ "$fail" -eq 0 ] || exit 1

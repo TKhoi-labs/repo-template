@@ -6,23 +6,34 @@ name: commitlint
 on:
   pull_request:
 
+# One run per pull request; a new push supersedes the previous run.
+concurrency:
+  group: commitlint-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 permissions:
-  contents: read
-  pull-requests: read
+  contents: read # resolve the commit range from the repository
+  pull-requests: read # read the pull request's base and head commits
 
 jobs:
   commitlint:
+    name: Lint commit messages
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # commitlint needs the history to resolve the range
           persist-credentials: false
 
       - name: Lint the pull request's commit messages
+        # Passed through the environment rather than interpolated into the
+        # script: ${{ }} inside `run:` is expanded before the shell sees it.
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           npx --yes @commitlint/cli \
-            --from "${{ github.event.pull_request.base.sha }}" \
-            --to "${{ github.event.pull_request.head.sha }}" \
+            --from "$BASE_SHA" \
+            --to "$HEAD_SHA" \
             --verbose
 {% endraw -%}

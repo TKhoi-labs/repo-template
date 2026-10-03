@@ -13,5 +13,8 @@ permissions:
 
 jobs:
   ci:
+    # The called workflow receives the automatic token, scoped by the
+    # `permissions:` above. Do not add `secrets: inherit`: that hands every
+    # secret in this repository to the shared workflow. Declare the specific
+    # secrets it needs under a `secrets:` key here instead.
     uses: {{ org_slug }}/.github/.github/workflows/ci.yml@{{ workflow_ref }}
-    secrets: inherit
