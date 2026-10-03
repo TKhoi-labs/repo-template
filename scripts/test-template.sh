@@ -140,7 +140,7 @@ done
 # 5. Core module content is authored, not stubbed
 # ---------------------------------------------------------------------------
 echo "== core content =="
-expect_stub_set "$BUILD/core-only" "README.md" "scripts/health.sh"
+expect_stub_set "$BUILD/core-only" "README.md"
 expect_contains "$BUILD/core-only/LICENSE" "MIT License"
 expect_contains "$BUILD/core-only/justfile" "scripts/health.sh"
 expect_contains "$BUILD/core-only/lefthook.yml" "just health"

@@ -8,10 +8,17 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 test-template:
     scripts/test-template.sh
 
-# Lint this template repo (requires yamllint and shellcheck).
+# Exercise the four-state health surface against its fixtures.
+test-health:
+    scripts/test-health.sh
+
+# Run every check on the template itself.
+test: test-template test-health
+
+# Lint this template repo.
 lint:
     yamllint copier.yml
-    shellcheck scripts/test-template.sh
+    shellcheck scripts/test-template.sh scripts/test-health.sh
 
 # Remove generated artifacts.
 clean:
