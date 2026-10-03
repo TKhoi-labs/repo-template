@@ -54,7 +54,8 @@ render() {
   shift
   rm -rf "$BUILD/$name"
   # shellcheck disable=SC2086
-  $COPIER copy --defaults -d "project_name=$name" "$@" "$ROOT" "$BUILD/$name" >/dev/null 2>&1
+  $COPIER copy --defaults -d "project_name=$name" -d org_slug=example "$@" \
+    "$ROOT" "$BUILD/$name" >/dev/null 2>&1
 }
 
 # Build the "everything off" argument list once.
@@ -137,11 +138,39 @@ for m in security release ops; do
 done
 
 # ---------------------------------------------------------------------------
-# 5. Core module content is authored, not stubbed
+# 5. Every module's content is authored, not stubbed
+#
+# Only two kinds of file may still be a stub: the README, because a repository
+# without a real README is genuinely unfinished, and the ops documents, whose
+# content is site-specific by nature.
 # ---------------------------------------------------------------------------
-echo "== core content =="
+echo "== module content =="
 expect_stub_set "$BUILD/core-only" "README.md"
-expect_contains "$BUILD/core-only/LICENSE" "MIT License"
+expect_stub_set "$BUILD/all-on" "README.md" \
+  "docs/runbooks/README.md" "observability/README.md"
+
+expect_contains "$BUILD/all-on/.commitlintrc.json" "config-conventional"
+expect_contains "$BUILD/all-on/.github/workflows/ci.yml" "uses: example/.github"
+expect_contains "$BUILD/all-on/.github/workflows/ci.yml" "@v1"
+expect_contains "$BUILD/all-on/.github/workflows/commitlint.yml" "@commitlint/cli"
+expect_contains "$BUILD/all-on/.github/workflows/commitlint.yml" "base.sha"
+expect_contains "$BUILD/all-on/.github/workflows/scorecard.yml" "ossf/scorecard-action"
+expect_contains "$BUILD/all-on/.github/workflows/gitleaks.yml" "gitleaks/gitleaks-action"
+expect_contains "$BUILD/all-on/.github/workflows/dependency-review.yml" "dependency-review-action"
+expect_contains "$BUILD/all-on/.github/workflows/release.yml" "git-cliff"
+expect_contains "$BUILD/all-on/renovate.json" "pinGitHubActionDigests"
+expect_contains "$BUILD/all-on/cliff.toml" "conventional_commits"
+expect_contains "$BUILD/all-on/.gitleaks.toml" "useDefault"
+expect_contains "$BUILD/all-on/.devcontainer/devcontainer.json" "devcontainers/base"
+expect_contains "$BUILD/all-on/.github/CODEOWNERS" "@example/maintainers"
+expect_contains "$BUILD/all-on/CONTRIBUTING.md" "Conventional Commits"
+expect_contains "$BUILD/all-on/SECURITY.md" "private vulnerability reporting"
+expect_contains "$BUILD/all-on/docs/architecture.md" "Repository state"
+expect_contains "$BUILD/all-on/docs/adr/README.md" "deferrals"
+# Tera syntax in cliff.toml must survive Copier untouched
+expect_contains "$BUILD/all-on/cliff.toml" '{{ version }}'
+# GitHub expressions in workflows must survive Copier untouched
+expect_contains "$BUILD/all-on/.github/workflows/gitleaks.yml" 'secrets.GITHUB_TOKEN'
 expect_contains "$BUILD/core-only/justfile" "scripts/health.sh"
 expect_contains "$BUILD/core-only/lefthook.yml" "just health"
 expect_contains "$BUILD/core-only/.github/workflows/copier-sync.yml" "copier update --defaults"
