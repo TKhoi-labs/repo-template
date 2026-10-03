@@ -134,12 +134,45 @@ Three gates are worth stating explicitly, because each fails in a confusing way 
 | Gate | Why |
 | :--- | :--- |
 | **P1 → item 5** | an untagged template makes `copier update` fail with `pathspec … did not match any file(s) known to git` |
-| **item 3 → item 5** | the sync workflow labels its PR `template-sync`, and that label exists only once the Settings app has applied `settings.yml` |
+| **item 3 → item 5** | ~~a gate~~ **not a gate** — see §5.7. The label is defined by `settings.yml`, but `create-pull-request` **creates a missing label itself**, so the sync PR opens and its checks run without the Settings app. The app supplies colour and description, not existence |
 | **P7 → item 7** | auto-merge with no required checks merges instantly rather than on green |
 
 ---
 
 ## 4. Item procedures
+
+### Execution record — 2026-10-03, organisation `TKhoi-labs`
+
+Run against a new organisation on the **free** plan, template `v0.2.1`. Probes: `probe-min`
+(`core` + `commits` + `ci` + `deps`), `probe-allon` (all modules), `probe-conflict`
+(deliberately diverged). Items 5–7 were only reachable after two template fixes (§5.3, §5.4).
+
+| Item | Result | Evidence |
+| :--- | :--- | :--- |
+| 1 devcontainer | **not run** — no container runtime on this machine | — |
+| 2 tagged copy | **pass** | `_commit: v0.1.1` over `gh:TKhoi-labs/repo-template`; core 🟡 for `README.md`; six ❓; exit 1 |
+| 3 Settings app | **not run** — web-UI install; the gate is softer than this document claimed (§5.7) | label auto-created, no colour or description |
+| 4 SHA resolves | **pass** | `ci / ci` check ran and passed in both probes |
+| 5 sync PR triggers CI | **pass** | PR #1 in `probe-min`, author `app/tkhoi-labs-copier-sync`; commitlint and `ci / ci` **ran on it** |
+| 6 divergence fails | **pass** | `probe-conflict`: `##[error]Repository has diverged.` + `./CONTRIBUTING.md.rej`; PR and auto-merge steps skipped; **0 PRs created** |
+| 7 auto-merge | **pass** | PR #1 merged; `probe-min` main advanced to `v0.2.1` |
+| 8 fleet `workflow_ref` bump | **not run live** — verified locally in `test-matrix.sh` | — |
+| 9 release notes | **pass** | release `v0.1.0`; notes render `## [0.1.0] - 2026-10-03` |
+| 10 Scorecard publishes | **pass** | score 5.5 published to the OpenSSF API; **Pinned-Dependencies 10/10** — "4 out of 4 third-party GitHubAction dependencies pinned" — with **no finding for the reusable-workflow caller** |
+| P1 publish with tags | **pass** | `v0.1.0` … `v0.2.1` |
+| P2 shared workflow | **pass** | `TKhoi-labs/.github`, SHA `19f45b68e4ca46d42d881caee72f998f353ccaaf` |
+| P5 variables | **pass** | `COPIER_SYNC_ENABLED`, `COPIER_SYNC_AUTO_MERGE`, `GHAS_ENABLED` |
+| P6 org Actions policy | **pass** | `enabled_repositories: all`, `allowed_actions: all`, **`sha_pinning_required: false`** |
+| P7 required checks | **pass** | `ci / ci` required on both probes; auto-merge then merged on green |
+
+Two by-products worth keeping. **Item 9 is the live proof that the `cliff.toml` fix in §1
+works** — the original would have died on that tag. And **item 10 is the live proof of
+ADR-0009**, including that Scorecard now inspects job-level `uses:`, which is the reason the
+reusable-workflow caller is pinned to a SHA and not a tag.
+
+Item 7 also confirmed §5.1 from the other direction: the sync PR merged **while
+dependency-review was failing**, because auto-merge honours only *required* checks. That is
+exactly why "no required checks" means "merge immediately".
 
 ### Item 1 — the devcontainer builds
 
@@ -166,7 +199,7 @@ cd /tmp/probe && git init && git add -A && git commit -m "chore: initial"
 just health
 ```
 
-- **Expected:** `_commit: v0.1.0` (a tag, never a SHA or `HEAD`); core reports
+- **Expected:** `_commit:` holds the **latest template tag** (never a SHA or `HEAD`); core reports
   `🟡 on — incomplete` for `README.md`; every disabled module reports `❓`; exit code 1.
 - **Failure signature:** `_commit` holding a SHA, or `just health` exiting 0 on a fresh repo.
 - **Evidence:** `.copier-answers.yml`, the health table, the exit code.
@@ -260,7 +293,7 @@ Confirm the first scheduled run uploads SARIF and that Pinned-Dependencies is sa
 
 ---
 
-## 5. Two defects found by planning, and fixed
+## 5. Defects found during phase 7, and their status
 
 ### 5.1 Auto-merge with no required checks merges immediately — **resolved by documentation**
 
@@ -314,13 +347,121 @@ innocent extra step in that job would have broken publishing with a confusing er
 `publish_results` visibility-dependent so a private repository analyses and uploads SARIF
 without publishing to a public dataset; and documented the restrictions in the workflow.
 
+### 5.3 Installation tokens expire, so the sync token could not be stored — **fixed in `v0.2.0`**
+
+This document told operators to *"store its installation token as the Actions secret
+`COPIER_SYNC_TOKEN`"*. That is **impossible**. GitHub's documentation says it twice:
+
+> The installation access token will expire after 1 hour.
+
+A one-hour token cannot be a repository secret. Nothing caught it because the sync had never
+run against a real App: the first live run reached `Open a pull request` and stopped with
+`Input 'token' not supplied`.
+
+**Fix applied:** the workflow mints a token per run with `actions/create-github-app-token`,
+pinned to a commit SHA per ADR-0009. Deployment changes from one secret to an app id variable
+plus a private key secret:
+
+```bash
+gh variable set COPIER_SYNC_APP_ID          --body "<app-id>" --repo <org>/<repo>
+gh secret   set COPIER_SYNC_APP_PRIVATE_KEY < private-key.pem --repo <org>/<repo>
+```
+
+The minted token is scoped to the repository being synced and to `contents` +
+`pull-requests` write, rather than inheriting the installation's blanket permissions
+(`zizmor: github-app`, reported at high severity).
+
+### 5.4 The generated CODEOWNERS was invalid — **fixed in `v0.2.1`**
+
+`codeowners_team` defaults to `@<org>/maintainers`, and nothing creates that team. GitHub then
+reports the file as broken:
+
+```text
+"kind":"Unknown owner","message":"Unknown owner on line 2: make sure the team
+@TKhoi-labs/maintainers exists, is publicly visible, and has write access to the repository"
+```
+
+The requirement is stronger than "the team must exist": it must also be **visible** and have
+**write access**. A branch protection rule requiring code owner review then blocks every pull
+request, because GitHub cannot resolve the owner at all.
+
+**Fix applied:** the payload's `CONTRIBUTING.md` now states the requirement where the person
+who must satisfy it will read it, and points out that an owner which does not exist is worse
+than none — the file is *invalid* rather than advisory.
+
+Still open as a design question: whether the default should remain a team (a guess that may
+not exist) or become the organisation handle, which is always a valid CODEOWNERS owner.
+
+### 5.5 `gitleaks` requires a licence for organisations — **OPEN**
+
+Every push in an org-owned repository fails:
+
+```text
+[TKhoi-labs] is an organization. License key is required.
+##[error]🛑 missing gitleaks license. Go grab one at gitleaks.io and store it as a GitHub
+Secret named GITLEAKS_LICENSE.
+```
+
+`gitleaks-action` is free for personal accounts and licensed for organisations. The `security`
+module therefore ships a workflow that fails out of the box for exactly the audience its own
+condition describes ("public repo or external users"). Reading and linting the workflow could
+never reveal this; only running it in an org could.
+
+| Option | Effect |
+| :--- | :--- |
+| Take a licence; set secret `GITLEAKS_LICENSE` | keeps the action; adds a paid dependency and one more prerequisite |
+| Run the `gitleaks` **CLI** in the workflow | no licence, no third-party action, one more tool to install and pin |
+| Make the job conditional on the secret existing | module appears to work while scanning nothing — the precise failure mode this build has rejected at every other step |
+
+### 5.6 `dependency-review` fails on a fresh organisation — **OPEN**
+
+The workflow's guard is:
+
+```yaml
+if: ${{ !github.event.repository.private || vars.GHAS_ENABLED == 'true' }}
+```
+
+with the comment *"Public repositories always have it"*. That is wrong. The run failed with:
+
+```text
+##[error]Dependency review is not supported on this repository.
+Please ensure that Dependency graph is enabled
+```
+
+Root cause, read from the organisation object:
+
+```text
+dependency_graph_enabled_for_new_repositories = False
+```
+
+New organisations disable the dependency graph for new repositories. Being public is not
+sufficient, and adding a dependency manifest does not help — the setting is the gate, and
+`security_and_analysis` does not report `dependency_graph` for a public repository at all, so
+it cannot be enabled per repository through the API.
+
+| Option | Effect |
+| :--- | :--- |
+| Enable the graph org-wide; document it as a prerequisite | module works; adds an org-admin step, and does not retro-fit existing repositories |
+| Guard the job on a variable, like `GHAS_ENABLED` already guards the private case | explicit skip instead of a confusing failure; the guard must be set honestly or it hides a real gap |
+| Drop the workflow from the `deps` module | Renovate still covers updates; loses vulnerability review on pull requests |
+
+### 5.7 Corrections to this runbook, from running it
+
+| Was | Now |
+| :--- | :--- |
+| P3 listed Contents, Pull requests and Metadata | also **Workflows: read and write**. Without it the sync pull request is rejected the moment it touches `.github/workflows/`, which the template always does (`refusing to allow a GitHub App to create or update workflow … without workflows permission`) |
+| "item 3 gates item 5: the `template-sync` label only exists once the Settings app has run" | **not a gate.** `create-pull-request` created the missing label; it appeared with an empty description, which is what an auto-created label looks like |
+| item 2 expected `_commit: v0.1.0` | the **latest tag**, whatever that is. It read `v0.1.1` when this ran. Hard-coding a version in an expectation is how that line went stale in a day |
+| *assumed during the run:* required status checks block direct pushes to a protected branch | they **warn and permit** when `enforce_admins: false`. GitHub printed `Required status check "ci / ci" is expected` and the admin push succeeded — worth knowing before concluding a check is enforced |
+
 ---
 
 ## 6. Evidence and exit criteria
 
 Phase 7 is complete when:
 
-1. Every item above has a recorded result: pass, or a fix plus a re-run.
+1. Every item above has a recorded result: pass, or a fix plus a re-run. The record is the
+table in §4.
 2. The evidence is attached to the tracking issue (§9) — a run URL, command output, or
    screenshot per item.
 3. This document is updated so that every remaining item is either ticked with a link to its

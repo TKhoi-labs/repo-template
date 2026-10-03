@@ -199,10 +199,20 @@ Two properties of the harness are worth knowing:
 - **A missing tool is skipped, not failed.** A green run on a machine without `actionlint`,
   `zizmor` or `git-cliff` does not mean those checks passed.
 
-## What is not verified
+## Verification status
 
-Everything requiring GitHub's servers: the devcontainer build, the sync pull request, settings
-propagation, Scorecard publishing, release notes on a real tag. These are itemised, with
-prerequisites, ordering constraints and evidence requirements, in
-[`docs/validation-runbook.md`](validation-runbook.md). A claim without attached evidence is
-marked unverified there, and should stay that way until it is.
+The sync pull request, the settings-gated label, Scorecard publishing and release notes on a
+real tag were verified against a live organisation on 2026-10-03. The execution record, with
+its evidence, is [`docs/validation-runbook.md`](validation-runbook.md) §4.
+
+Three items remain unverified: the **devcontainer build** (needs a container runtime), the
+**Settings app install** (a web-UI step, and its real effect is narrower than assumed — labels
+are created by the sync itself, the app only styles them), and the **fleet-wide `workflow_ref`
+bump**.
+
+That document also records the four defects the live run found. All four share a shape: they
+are invisible to rendering, linting and unit tests, and appear only in an organisation, on a
+real run. Two are fixed and two are open decisions.
+
+A claim without attached evidence stays marked unverified there, and should stay that way
+until it is.
