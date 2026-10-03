@@ -96,7 +96,13 @@ jobs:
             repository through the Settings app.
 
       # Opt in per repository with the variable COPIER_SYNC_AUTO_MERGE=true.
-      # Off by default, so the first sync across a fleet is always reviewed.
+      #
+      # PREREQUISITE: `gh pr merge --auto` merges as soon as required checks
+      # pass and required approvals are met. `.github/settings.yml` ships
+      # `required_status_checks: null`, so with no required checks and
+      # `contributing` off (zero required approvals) this merges IMMEDIATELY
+      # rather than on green. Configure the required status checks first.
+      # See docs/validation-runbook.md section 5.1.
       - name: Enable auto-merge on green
         if: >-
           steps.pr.outputs.pull-request-number &&
