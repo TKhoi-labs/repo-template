@@ -1,0 +1,47 @@
+{#- Rendered from the Copier answers, so it cannot disagree with the manifest. -#}
+{%- set modules = [
+  ('commits', module_commits, 'wants enforced history'),
+  ('ci', module_ci, 'any automated check'),
+  ('deps', module_deps, 'repo has any dependency'),
+  ('docs', module_docs, 'architecture exists'),
+  ('contributing', module_contributing, 'accepts outside contributions'),
+  ('env', module_env, 'reproducible local tooling'),
+  ('security', module_security, 'public / external users'),
+  ('release', module_release, 'publishes a versioned artifact'),
+  ('ops', module_ops, 'deployed / running'),
+] -%}
+{%- set off = [] -%}
+{%- for name, enabled, condition in modules if not enabled -%}
+{%- set _ = off.append((name, condition)) -%}
+{%- endfor -%}
+# 1. Initial deferrals and declines
+
+## Status
+
+Proposed
+
+## Context
+
+Modules that were not enabled when this repository was generated must be resolved here as
+either **deferred** (with the trigger that will revisit them) or **declined** (with the
+reason). A module that is off and unrecorded is not a decision; it is an omission.
+
+`just health` reads this file. Any row still marked `TODO` is reported as unrecorded, and
+`just health` exits non-zero until it is resolved.
+
+## Decision
+
+{% if off -%}
+| Module | Condition | Deferred (with trigger) or declined (with reason) |
+| :--- | :--- | :--- |
+{% for name, condition in off -%}
+| `{{ name }}` | {{ condition }} | TODO: deferred (trigger: ...) or declined (reason: ...) |
+{% endfor %}
+{%- else -%}
+All modules were enabled at generation time. Nothing is deferred or declined.
+{%- endif %}
+
+## Consequences
+
+Until every `TODO` above is resolved, the health surface cannot distinguish a module that was
+deliberately left out from one that was forgotten.

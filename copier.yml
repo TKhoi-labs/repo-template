@@ -1,0 +1,133 @@
+---
+# Copier questionnaire for repo-template.
+#
+# The rendered payload lives in template/ (see docs/adr/0002). Everything
+# outside template/ is template tooling and is never rendered into a repo.
+#
+# Module prompts encode the condition from the architecture design. Enable a
+# module only when its condition is true: a module with no trigger is
+# maintenance you now own.
+
+_min_copier_version: "9.0.0"
+_subdirectory: template
+_answers_file: .copier-answers.yml
+_envops:
+  keep_trailing_newline: true
+  undefined: jinja2.StrictUndefined
+
+# ---------------------------------------------------------------------------
+# Identity
+# ---------------------------------------------------------------------------
+
+project_name:
+  type: str
+  help: Human-readable project name.
+  default: "{{ _copier_conf.dst_path.name }}"
+
+project_slug:
+  type: str
+  help: Lowercase hyphenated slug, used for repository and artifact names.
+  default: "{{ project_name | lower | replace(' ', '-') }}"
+  validator: >-
+    {% if not (project_slug | regex_search('^[a-z][a-z0-9-]*$')) %}
+    Use lowercase letters, digits and hyphens, starting with a letter.
+    {% endif %}
+
+description:
+  type: str
+  help: One-line description of what this repository is for.
+  default: ""
+
+org_slug:
+  type: str
+  help: GitHub org or user that owns this repo and the shared .github repo.
+  default: ""
+
+workflow_ref:
+  type: str
+  help: >-
+    Tag of the shared org .github reusable workflows to pin to
+    (never a branch).
+  default: "v1"
+
+# ---------------------------------------------------------------------------
+# Modules
+#
+# Order matters: a question's validator can only see answers already given, so
+# ci is asked before the modules that depend on it.
+# ---------------------------------------------------------------------------
+
+module_commits:
+  type: bool
+  help: >-
+    commits — enforce Conventional Commits with commitlint?
+    (condition: you want enforced history)
+  default: true
+
+module_ci:
+  type: bool
+  help: >-
+    ci — add CI as a thin caller of the shared reusable workflow?
+    (condition: any automated check)
+  default: true
+
+module_deps:
+  type: bool
+  help: >-
+    deps — Renovate plus dependency review?
+    (condition: the repo has any dependency)
+  default: true
+
+module_docs:
+  type: bool
+  help: >-
+    docs — architecture notes and the ADR index?
+    (condition: architecture exists)
+  default: false
+
+module_contributing:
+  type: bool
+  help: >-
+    contributing — CONTRIBUTING, CODEOWNERS and settings hardening?
+    (condition: you accept outside contributions)
+  default: false
+
+module_env:
+  type: bool
+  help: >-
+    env — devcontainer for reproducible local tooling?
+    (condition: contributors need a reproducible environment)
+  default: false
+
+module_security:
+  type: bool
+  help: >-
+    security — gitleaks and OpenSSF Scorecard?
+    (condition: public repo or external users) REQUIRES ci
+  default: false
+  validator: >-
+    {% if module_security and not module_ci %}
+    module_security requires module_ci: the security workflows are CI jobs.
+    {% endif %}
+
+module_release:
+  type: bool
+  help: >-
+    release — git-cliff release notes and a release workflow?
+    (condition: you publish a versioned artifact) REQUIRES ci
+  default: false
+  validator: >-
+    {% if module_release and not module_ci %}
+    module_release requires module_ci: the release workflow is a CI job.
+    {% endif %}
+
+module_ops:
+  type: bool
+  help: >-
+    ops — runbooks and observability config?
+    (condition: the repo is deployed or running) REQUIRES ci
+  default: false
+  validator: >-
+    {% if module_ops and not module_ci %}
+    module_ops requires module_ci: deploy pipelines are CI jobs.
+    {% endif %}
