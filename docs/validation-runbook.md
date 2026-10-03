@@ -659,6 +659,14 @@ swallowed.
 block must not be counted as configuration that works. The repository feature block and the label
 colours and descriptions do come from the file.
 
+**Decided (2026-10-03): keep the block.** It is correct, it takes effect if the hosted app is fixed,
+and removing it would delete the only declarative statement of what the protection should be. In
+stead it is documented as not-yet-applied in the three places it will be read: a comment in the file
+itself, the README, which carries the `gh api` call to apply it by hand, and this section. The
+declared check also follows the module now — `ci / ci` when the `ci` module is on, `null` when it is
+off — because with no `ci` module nothing produces a check and requiring one would block every
+merge. Shipped in `v0.3.3`.
+
 One more fact worth having before adopting it: the app's own README warns that it "inherently
 escalates anyone with `push` permissions to the **admin** role", because that is who can commit to
 the file it obeys.
