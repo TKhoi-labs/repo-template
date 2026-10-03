@@ -1,10 +1,18 @@
 {% raw %}# git-cliff: release notes derived from Conventional Commits (ADR-0005).
 # NOTE: git-cliff uses Tera, whose syntax is deliberately close to Jinja's.
 # This file is raw-wrapped in the template so Copier leaves it alone.
+#
+# The `{% if version %}` guard is not decoration. `timestamp` is only populated
+# for a tagged release, so rendering `timestamp | date(...)` in the unreleased
+# section fails the whole run with "Filter call 'date' failed" — which is what
+# `just changelog` hits, since it renders the full changelog including
+# Unreleased. This matches git-cliff's own default template.
 [changelog]
 header = ""
 body = """
-## {{ version }} - {{ timestamp | date(format="%Y-%m-%d") }}
+{% if version %}## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}## [Unreleased]
+{% endif %}
 {% for group, commits in commits | group_by(attribute="group") %}
 ### {{ group | striptags | trim | upper_first }}
 {% for commit in commits %}

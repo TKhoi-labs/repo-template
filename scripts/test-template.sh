@@ -176,8 +176,12 @@ expect_contains "$BUILD/all-on/CONTRIBUTING.md" "Conventional Commits"
 expect_contains "$BUILD/all-on/SECURITY.md" "private vulnerability reporting"
 expect_contains "$BUILD/all-on/docs/architecture.md" "Repository state"
 expect_contains "$BUILD/all-on/docs/adr/README.md" "deferrals"
-# Tera syntax in cliff.toml must survive Copier untouched
-expect_contains "$BUILD/all-on/cliff.toml" '{{ version }}'
+# Tera syntax in cliff.toml must survive Copier untouched. `trim_start_matches`
+# is a Tera filter Jinja does not have and `{% for group, commits in ... %}` is
+# Tera's loop form, so if the raw wrapper is ever dropped these either error or
+# quietly vanish.
+expect_contains "$BUILD/all-on/cliff.toml" 'trim_start_matches'
+expect_contains "$BUILD/all-on/cliff.toml" '{% for group, commits in commits'
 # GitHub expressions in workflows must survive Copier untouched
 expect_contains "$BUILD/all-on/.github/workflows/gitleaks.yml" 'secrets.GITHUB_TOKEN'
 expect_contains "$BUILD/core-only/justfile" "scripts/health.sh"
