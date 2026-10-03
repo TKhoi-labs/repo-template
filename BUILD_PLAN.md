@@ -380,6 +380,8 @@ Consequences:
 | `validator` under `-d`/`--defaults` | fires, exits **1**, `cleanup_on_error` removes the destination | negative DAG tests work with no `_tasks` needed |
 | Boolean in file content | renders as `True` / `False` (capitalised) | compare with `= "True"`, or use `{{ 1 if x else 0 }}` |
 | A directory whose files are all excluded | directory may still be created, empty | harmless, but do not assert absence of dirs |
+| **`copier update` on an untagged template** | Copier records an **abbreviated** SHA, then on update clones with a filtered transport where an abbreviated SHA cannot be resolved: `error: pathspec '8204256' did not match any file(s) known to git`. You cannot `fetch` a short SHA | **`copier update` does not work at all until the template has a tag.** The plan's "pin the template to a tag, never HEAD" is therefore a hard requirement, not a preference. A tag is a fetchable ref, so it resolves |
+| A payload file containing `${{ ... }}` or Tera `{{ ... }}` | Copier renders them as Jinja and either errors or silently substitutes | wrap in `{% raw %}`; a whole-file wrapper for workflows with no answers, and for `cliff.toml`, whose Tera syntax is near-identical to Jinja's |
 
 ## 7. Build phases
 
@@ -513,6 +515,7 @@ metadata for each tool. Three material defects were found; §3, §7 and §9 abov
 | 5 | Shared-edit files (`settings.yml`, `lefthook.yml`, `justfile`) had no convention, so one-owner-per-file was unimplementable | high | Shared-edit surfaces table + contributor test (§3) |
 | 6 | `env` tooling coupling was implicit | medium | Declared in `justfile` recipes (§3) |
 | 7 | **`.copier-answers.yml` is never written by Copier** — the manifest the health surface reads was assumed to be automatic | **blocker** | Payload must ship `{{ _copier_conf.answers_file }}.jinja`; `template-test` asserts its presence and module keys (§6.9) |
+| 8 | **`copier update` is inoperable on an untagged template** — it fails with an unresolvable abbreviated SHA | **blocker** | The template must be tagged before sync can work at all; asserted by `test-matrix` (§6.10) |
 
 ### 10.2 Stub detection engine — **DECIDED: sentinel grep in `scripts/health.sh`**
 
