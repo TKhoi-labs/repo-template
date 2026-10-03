@@ -1,4 +1,4 @@
-# 10. Do not manage code scanning from the template
+# 10. Treat code scanning and code quality as organisation-owned state
 
 Date: 2026-10-03
 
@@ -8,70 +8,78 @@ Accepted
 
 ## Context
 
-Code scanning (CodeQL) is the one security control this template deliberately does **not**
-ship, and the reason is a property of GitHub rather than a preference. Every other control in
-the `security` module is a file: gitleaks scans from a workflow, Scorecard runs in a workflow,
-`SECURITY.md` and `.gitleaks.toml` are files. All of them are pinned to commit SHAs
-(ADR-0009), reviewed through sync pull requests, and visible to `just health` through the stub
-sentinel.
+Code scanning (CodeQL) and code quality are the two security-adjacent controls this template
+deliberately does not ship, for the same reason: they are **GitHub-owned state**, not
+repository content.
 
-Code scanning cannot be any of those things. GitHub offers two setups, and neither fits:
+Every other control in the `security` module is a file. gitleaks scans from a workflow.
+Scorecard runs in a workflow. `SECURITY.md` and `.gitleaks.toml` are files. All of them are
+pinned to commit SHAs (ADR-0009), reviewed through sync pull requests, and visible to
+`just health` through the stub sentinel.
 
-- **Default setup** — GitHub generates and manages the workflow. It is a repository *setting*,
-  not a file, so it cannot be pinned, reviewed, or seen by the sentinel grep.
-- **Advanced setup** — a `codeql.yml` workflow, which would fit the template's model.
-
-They are mutually exclusive, and the conflict resolves against us. From GitHub's
-documentation:
+Neither of these two can be any of those things. For code scanning, GitHub offers two setups
+and the conflict between them resolves against us — from GitHub's documentation:
 
 > When you enable default setup, this disables the existing CodeQL workflow file and blocks
 > any CodeQL workflow
 
 and the documented symptom of having both is *"code scanning results are different than you
-expected"* — a confusing-result failure, not an error.
+expected"* — a confusing-result failure, not an error. Code quality has no file-based setup at
+all: it is a repository setting that runs CodeQL analyses through GitHub-managed workflows.
 
-Three observations from a live organisation settled it (2026-10-03, org on the free plan,
-CodeQL default setup applied to all repositories):
+Six observations from a live organisation settled it (2026-10-03; org on the **free** plan;
+code scanning applied org-wide; code quality set to "let repositories decide"):
 
 | Attempt | Result |
 | :--- | :--- |
-| Change default setup per repository, as an org admin with a `repo`-scoped token | `422 Code scanning default setup cannot be modified. This setting is controlled by organization administrators.` |
-| Read default setup from a workflow using `GITHUB_TOKEN` with `security-events: write` | `403 Resource not accessible by integration` |
+| Change code-scanning default setup per repository, as an org admin | `422 Code scanning default setup cannot be modified. This setting is controlled by organization administrators.` |
+| Read code-scanning default setup from a workflow, `GITHUB_TOKEN` + `security-events: write` | `403 Resource not accessible by integration` |
 | Ship `codeql.yml` while the org applies default setup | disabled by GitHub, silently |
+| Enable code quality per repository, as a repo admin | **works** — `{"run_id":0}`, then `state: configured` |
+| Enable code quality from a workflow, `GITHUB_TOKEN` + `security-events: write` | `403 Resource not accessible by integration` |
+| Code quality on a repository containing no code | `languages: []`, and no analysis run produced |
 
-The first two matter more than they look. The setting is **locked to organisation
-administrators**, so no repository workflow can enable it — not with the automatic token, not
-with `security-events: write`. And because the automatic token cannot even *read* the state, a
-workflow cannot verify it either. There is no version of this control that the template can
-express, and no honest version it can check.
+Two things follow. Only a human with repository or organisation administration can change
+either control, so **no repository workflow can enable them** — and because the automatic token
+cannot even *read* code scanning's state, no workflow can verify it either. There is no version
+of these controls the template can express, and none it can honestly check. The last row
+matters practically: a repository generated from this template contains no code to analyse
+until someone writes some.
 
-The third observation is the dangerous one. A shipped `codeql.yml` would not fail; it would be
-present, appear correct in review, and do nothing. That is the failure mode this build has
-rejected at every other step — the conditional gitleaks scan that "appears to work while
-scanning nothing", the auto-merge that merges without looking.
+It is also worth recording that code quality is **generally available on GitHub Team and
+Enterprise Cloud**, and the organisation here is on Free. It is not merely awkward to manage
+from the template; on a lower plan it may not be available at all.
+
+The silent-disable row is the dangerous one. A shipped `codeql.yml` would not fail. It would be
+present, it would survive review, and it would do nothing — the same shape as the conditional
+gitleaks scan rejected in ADR-0010's context above, and the same failure mode this project has
+rejected at every other step.
 
 ## Decision
 
-The template does not ship a CodeQL workflow, and does not add a `codeql` module. Code
-scanning is documented as an **organisation prerequisite**, in the same place and in the same
-form as the gitleaks licence and the dependency-review org setting.
+The template ships **no CodeQL workflow, no code-quality configuration, and no module for
+either**. Both are documented as organisation or repository prerequisites, in the same place
+and the same form as the gitleaks licence and the dependency-review org setting.
 
 A repository generated from this template gets code scanning when its organisation enables it,
-and gets nothing when it does not. The generated `SECURITY.md` states that ownership, so the
-boundary is not something a reader has to infer.
+and gets code quality when a repository administrator enables it under a "let repositories
+decide" policy. The generated `SECURITY.md` states that the organisation owns code scanning, so
+the boundary is not something a reader has to infer.
 
 ## Consequences
 
-- **Code scanning is invisible to `just health`.** The health surface reports on files. A
-  control that is a setting cannot appear in it, and this is the one place where "the module
-  is complete" means something narrower than it does elsewhere.
-- **A generated repository cannot opt in.** Enabling it needs an organisation administrator or
-  the repository's own settings page. The template's answer is a documented prerequisite, not
-  a workflow.
-- **An organisation that manages code scanning per repository may add `codeql.yml` by hand.**
-  It would be a file no module owns, so `copier update` will leave it alone. That is a
-  supported outcome, not a supported *module*: the template cannot know which posture an
-  organisation takes, and guessing wrong produces a silently disabled workflow.
-- **It is worth revisiting** if GitHub ever exposes the default-setup state to `GITHUB_TOKEN`,
-  since a verification job — "this repository has code scanning" — would then be expressible
-  as a pinned, reviewable check, which is how every other control here is handled.
+- **Both controls are invisible to `just health`.** The health surface reports on files. This is
+  the one place where "the module is complete" means something narrower than it does elsewhere.
+- **A repository cannot enable either one by itself.** Code scanning needs an organisation
+  administrator. Code quality needs an administrator too — just of the repository rather than
+  the organisation.
+- **An organisation that manages code scanning per repository may add `codeql.yml` by hand.** It
+  would be a file no module owns, so `copier update` will leave it alone. That is a supported
+  outcome, but not a supported *module*: the template cannot know which posture an organisation
+  takes, and guessing wrong produces a workflow that is silently disabled.
+- **A reviewer should reject either as a "fix".** Adding a CodeQL workflow to a repository whose
+  organisation uses default setup makes things look better without being better.
+- **It is worth revisiting** if GitHub ever exposes this state to `GITHUB_TOKEN`, or makes code
+  quality available on lower plans, since a verification job — "this repository has code
+  scanning" — would then be expressible as a pinned, reviewable check, which is how every other
+  control here is handled.

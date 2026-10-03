@@ -27,7 +27,7 @@ Copy `0000-template.md` to the next free number, or run `adr new "<title>"` if y
 | [0007](0007-core-owns-the-lefthook-file.md) | The `core` module owns `lefthook.yml` | Accepted |
 | [0008](0008-assume-github-with-a-devcontainer-env-module.md) | Assume GitHub, and satisfy local tooling with a devcontainer | Accepted |
 | [0009](0009-pin-github-actions-to-commit-shas.md) | Pin GitHub Actions to commit SHAs | Accepted |
-| [0010](0010-do-not-manage-code-scanning-from-the-template.md) | Do not manage code scanning from the template | Accepted |
+| [0010](0010-treat-code-scanning-and-code-quality-as-organisation-state.md) | Treat code scanning and code quality as organisation-owned state | Accepted |
 
 ## The rule for deferrals
 

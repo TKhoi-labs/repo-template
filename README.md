@@ -113,12 +113,17 @@ There is no *Dependency graph* toggle anywhere in the UI, and a public repositor
 enable locally — the graph arrives with Dependabot, which is why applying the features org-wide
 is the fix.
 
-**Code scanning is not managed here, deliberately.** CodeQL complements this module but cannot
-be part of it: default setup is a repository *setting* that organisation administrators control,
-no repository workflow can enable it *or even read it*, and a `codeql.yml` shipped alongside an
-org-wide default setup is disabled by GitHub without failing. Enable it in the organisation's
-**Advanced Security → Global settings**; the reasoning and the evidence are in
-[ADR-0010](docs/adr/0010-do-not-manage-code-scanning-from-the-template.md).
+**Code scanning and code quality are not managed here, deliberately.** Both complement this
+module but cannot be part of it, because both are settings rather than files: no repository
+workflow can enable either one — the automatic token is refused with `403`, and code scanning's
+state cannot even be *read* — and a `codeql.yml` shipped alongside an org-wide default setup is
+disabled by GitHub **without failing**.
+
+Enable code scanning in the organisation's **Advanced Security → Global settings**. Code quality
+is enabled per repository when the organisation lets repositories decide; note that it is
+generally available on **GitHub Team and Enterprise Cloud**, not on Free. The reasoning, the
+evidence and the revisit trigger are in
+[ADR-0010](docs/adr/0010-treat-code-scanning-and-code-quality-as-organisation-state.md).
 | **release** | you publish a versioned artifact | `cliff.toml`, a release workflow *(requires `ci`)* |
 | **ops** | the repo is deployed or running | runbooks, observability config *(requires `ci`)* |
 
@@ -193,7 +198,7 @@ conflict locally and re-run.
 ## Working on this template
 
 ```bash
-just test     # 155 checks: rendering, module gating, health, matrix, rendered artifacts
+just test     # every check: rendering, module gating, health, matrix, rendered artifacts, docs
 just lint     # yamllint + shellcheck
 just clean
 ```
@@ -204,6 +209,12 @@ just clean
 | `test-health` | the five health states against fixtures |
 | `test-matrix` | 14 configurations, ownership disjointness, SHA pinning, `copier update` idempotency, answer migration |
 | `test-rendered` | actionlint, zizmor, git-cliff, `just`, and the conflict guard, against rendered output |
+| `test-docs` | the README's own commands, run; every question, module and ADR checked against the tree |
+
+CI runs the same suites on every push and pull request
+(`.github/workflows/template-ci.yml`) — so a change is checked without anyone remembering to run
+them — plus a separate job that builds the devcontainer and verifies its toolchain, the one
+thing that cannot be checked locally without a container runtime.
 
 Rendering in the suites runs from a tagged snapshot of the working tree, so the tests see
 uncommitted work and are not affected by tags placed on this repository.
@@ -211,7 +222,7 @@ uncommitted work and are not affected by tags placed on this repository.
 **After merging a change, tag it** — otherwise no generated repository receives it:
 
 ```bash
-git tag -a v0.1.1 -m "..." && git push --follow-tags
+git tag -a v0.4.0 -m "..." && git push --follow-tags
 ```
 
 Then read [`CONTRIBUTING.md`](CONTRIBUTING.md) before changing module content.
