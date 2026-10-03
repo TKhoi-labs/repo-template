@@ -174,6 +174,19 @@ Item 7 also confirmed §5.1 from the other direction: the sync PR merged **while
 dependency-review was failing**, because auto-merge honours only *required* checks. That is
 exactly why "no required checks" means "merge immediately".
 
+**Re-verified after the fixes** (same day, later). Both defects that were open at the time of
+the run above are now shown working:
+
+| Check | Before | After |
+| :--- | :--- | :--- |
+| `gitleaks` on `probe-allon` | failed at 20:41:24 and 20:44:09 | **passed at 20:44:21**, once the licence env and the organisation secret were both in place |
+| `dependency-review` on a pull request | failed on every run | **passed**, after the organisation applied its security features to repositories |
+| sync touching a workflow file | rejected: *"without `workflows` permission"* | **PR #2 accepted**, with all six checks green |
+
+The final sync PR (`probe-allon` #2) carried `.github/workflows/copier-sync.yml` and passed
+`Scan for secrets`, `Review dependency changes`, `ci / ci`, `Lint commit messages`, `CodeQL` and
+`Analyze (actions)` — the whole loop, on a change of the kind that broke it.
+
 ### Item 1 — the devcontainer builds
 
 The least verified file in the repository: valid JSON, structurally sound, never built.
@@ -370,6 +383,35 @@ gh secret   set COPIER_SYNC_APP_PRIVATE_KEY < private-key.pem --repo <org>/<repo
 The minted token is scoped to the repository being synced and to `contents` +
 `pull-requests` write, rather than inheriting the installation's blanket permissions
 (`zizmor: github-app`, reported at high severity).
+
+**…and that scoping introduced a second defect, fixed in `v0.2.3`.** Naming `contents` and
+`pull-requests` narrowed the token to exactly those, silently dropping `workflows` — even though
+the App itself holds it. The sync then failed on any change touching `.github/workflows/`:
+
+```text
+! [remote rejected] chore/copier-sync -> chore/copier-sync
+(refusing to allow a GitHub App to create or update workflow
+`.github/workflows/dependency-review.yml` without `workflows` permission)
+```
+
+`probe-min` had passed only because its diff happened to be `.copier-answers.yml` alone. The
+rejection names the **App's** permission rather than the token's, so it reads as a misconfigured
+App rather than an over-narrow mint. Fixed by adding `permission-workflows: write`, and verified
+on a sync whose diff includes a workflow file (PR #2 in `probe-allon`, all six checks green).
+
+**A repository on an older version cannot be repaired by the sync itself.** The token scoping
+decides whether the sync may write workflow files, so a repository running the narrow-token copy
+is stuck: the sync that would deliver the fix is the one that cannot push it. It has to be
+brought forward once by hand:
+
+```bash
+copier update --defaults --trust
+```
+
+Hand-applying the change does **not** work, and the reason is worth knowing: Copier applies the
+template's diff as a **patch**, so a file that already carries the new content in the patched
+region makes the patch fail to apply — the sync reports a conflict on a file that is in fact
+already correct. Both facts are now recorded in the workflow itself.
 
 ### 5.4 The generated CODEOWNERS was invalid — **fixed in `v0.2.1`**
 
