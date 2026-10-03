@@ -180,9 +180,10 @@ Two deliberate choices:
 
 ## Testing
 
-Four suites, all in `scripts/`, orchestrated by `just test`. Their design rule is that a check
-must be able to fail for a reason you can act on — so each one covers a class of defect that
-reading the files did not catch.
+Five suites, all in `scripts/`, orchestrated by `just test` and re-run by CI on every push and
+pull request (`.github/workflows/template-ci.yml`). Their design rule is that a check must be
+able to fail for a reason you can act on — so each one covers a class of defect that reading the
+files did not catch.
 
 | Suite | Proves |
 | :--- | :--- |
@@ -190,14 +191,22 @@ reading the files did not catch.
 | `test-health` | every health state and exit code, against fixtures |
 | `test-matrix` | ownership disjointness, SHA pinning across all configs, `copier update` idempotency, `_migrations` |
 | `test-rendered` | actionlint, zizmor, git-cliff, `just`, and the conflict guard, against rendered output |
+| `test-docs` | the README's own commands, run; every question, module, ADR and link checked |
+
+CI adds one job the suites cannot cover locally without a container runtime: it renders a
+repository with the `env` module enabled, builds its devcontainer, and verifies that the
+toolchain `postCreateCommand` installs actually ends up on `PATH`. The devcontainer was valid
+JSON that had never been built before that job existed.
 
 Two properties of the harness are worth knowing:
 
 - **Renders come from a tagged snapshot of the working tree**, not from this repository. So the
   suites see uncommitted work, and tagging this repository cannot silently change what they
-  test.
+  test. CI needs the same trick for the same reason: `copier copy` reads the latest *tag* when
+  one exists, so rendering the checkout directly would test the last release.
 - **A missing tool is skipped, not failed.** A green run on a machine without `actionlint`,
-  `zizmor` or `git-cliff` does not mean those checks passed.
+  `zizmor` or `git-cliff` does not mean those checks passed, which is why CI installs all of
+  them.
 
 ## Verification status
 

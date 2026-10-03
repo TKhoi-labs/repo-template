@@ -183,6 +183,11 @@ template tag, then let the scheduled sync open a pull request per repository. Se
 just test && just lint
 ```
 
+CI runs the same suites on every push and pull request, so this is a courtesy to yourself rather
+than a requirement — but the devcontainer job is worth knowing about: it renders a repository,
+builds its devcontainer and checks the toolchain inside it, which is the only place that is
+verified at all.
+
 If you changed a workflow, run `just test-rendered`, which is the only suite that actually
 executes actionlint and zizmor against rendered output. Reading a workflow is not verification
 — that is how three high-severity permission findings and a broken `cliff.toml` survived

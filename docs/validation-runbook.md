@@ -4,9 +4,9 @@ Phase 7 exists because the local suite proves everything that *can* be proven wi
 GitHub organisation, and nothing that cannot. This document is the procedure for converting
 the remaining claims into verified ones.
 
-`just test` currently runs **155 checks**: rendering, module gating, the DAG, file ownership,
-action pinning, the four-state health surface, `copier update` idempotency, answer migration,
-workflow linting, and the rendered-artifact guards in §1.
+`just test` runs five suites, re-run by CI on every push: rendering, module gating, the DAG, file
+ownership, action pinning, the four-state health surface, `copier update` idempotency, answer
+migration, workflow linting, the rendered-artifact guards in §1, and the documentation checks.
 
 ---
 

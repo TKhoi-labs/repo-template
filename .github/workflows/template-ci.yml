@@ -1,0 +1,117 @@
+---
+# CI for this repository — template-only tooling.
+#
+# This file is outside template/, so it is never rendered into a generated
+# repository (ADR-0002). The payload carries its own CI caller.
+#
+# Two jobs, kept separate so a devcontainer failure cannot mask a test failure.
+# Until this existed the suites ran only on a maintainer's machine, which meant
+# nothing re-checked a change on push — including the release-note template that
+# was broken for several commits without anyone noticing.
+name: template-ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions: {} # each job below declares exactly what it needs
+
+concurrency:
+  group: template-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read # check out the template and render from it
+    steps:
+      # persist-credentials: false keeps the job's token out of the local git
+      # config, where a later step could read it (zizmor: artipacked).
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Every tool the suites use, installed rather than left to chance: a
+      # missing tool is reported as a skip, and a run full of skips looks green
+      # while proving nothing. copier is pinned to the version the sync
+      # workflow installs, so both test the same generator.
+      - name: Install the tools the suites use
+        run: |
+          pipx install copier==9.18.2
+          pipx install yamllint
+          pipx install git-cliff
+          pipx install rust-just
+          pipx install zizmor
+          go install github.com/rhysd/actionlint/cmd/actionlint@latest
+
+      - name: Run the suites
+        run: |
+          for suite in test-template test-health test-matrix test-rendered test-docs; do
+            echo "=== $suite ==="
+            "scripts/$suite.sh"
+          done
+
+  devcontainer:
+    name: devcontainer
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install copier
+        run: pipx install copier==9.18.2
+
+      # Rendering from a snapshot of the working tree, not from the repository,
+      # because `copier copy` reads the latest *tag* when one exists: rendering
+      # the checkout directly would test the last release instead of this
+      # commit. The suites avoid the same trap the same way.
+      - name: Render a repository with the env module enabled
+        run: |
+          source scripts/lib/template-snapshot.sh
+          make_template_snapshot "$PWD" "$RUNNER_TEMP/template-src"
+          copier copy --defaults \
+            -d project_name=devcontainer-probe \
+            -d org_slug=example \
+            -d workflow_ref=1111111111111111111111111111111111111111 \
+            -d module_env=true \
+            "$RUNNER_TEMP/template-src" "$RUNNER_TEMP/probe"
+
+      # This is the check that cannot be run anywhere else: the devcontainer was
+      # valid JSON that had never been built, so nothing confirmed the toolchain
+      # its postCreateCommand installs actually ends up on PATH.
+      - name: Build the devcontainer and check its toolchain
+        env:
+          PROBE: ${{ runner.temp }}/probe
+          CLI: "@devcontainers/cli@0.89.0"
+        run: |
+          npx --yes "$CLI" up --workspace-folder "$PROBE"
+          npx --yes "$CLI" exec --workspace-folder "$PROBE" \
+            bash -lc 'just --version && git-cliff --version && copier --version'
+
+      # A freshly generated repository reports itself incomplete by design, so
+      # the assertion is the documented exit code, not success.
+      - name: Run just health inside the container
+        env:
+          PROBE: ${{ runner.temp }}/probe
+          CLI: "@devcontainers/cli@0.89.0"
+        run: |
+          set +e
+          out="$(npx --yes "$CLI" exec --workspace-folder "$PROBE" bash -lc 'just health' 2>&1)"
+          rc=$?
+          set -e
+          printf '%s\n' "$out"
+          if [ "$rc" -ne 1 ]; then
+            echo "::error::expected exit 1 on a freshly generated repository, got $rc"
+            exit 1
+          fi
