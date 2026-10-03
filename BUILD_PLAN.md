@@ -126,10 +126,10 @@ while also requiring it to run "pre-push health" (core's concern). With `commits
 would not exist at all, so core's health hook and security's gitleaks hook would vanish even
 though both modules are ON. `core` is always present, so it is the only correct host.
 
-**Implicit tooling coupling.** `env` installs the tools that `core` (`yq`, `just`),
-`docs` (`adr-tools`) and `release` (`git-cliff`) invoke. With `env` OFF those
-invocations must fail with a clear message naming the missing tool — never silently. Declare
-the tool requirements in the `justfile` recipes themselves.
+**Implicit tooling coupling.** `env` installs the tools that `core` (`just`) and
+`release` (`git-cliff`) invoke, and `adr-tools` is an optional convenience for `docs`. With
+`env` OFF those invocations must fail with a clear message naming the missing tool — never
+silently. Declare the tool requirements in the `justfile` recipes themselves.
 
 **Ownership rows for this repo are not ownership rows for the payload.** `copier.yml`,
 `BUILD_PLAN.md` and `template-test.yml` live *outside* `template/`, so they are not module
@@ -177,9 +177,9 @@ deferred"). It is what stops ADR-0001 from silently rotting into a list nobody m
 
 `just health` must be a committed script, not an inline one-liner. **Stub detection is a
 sentinel grep inside that script** (decision 7) — read-only, dependency-free, and not
-sensitive to any tool being archived. Runtime dependencies are only `yq` (read
-`.copier-answers.yml`) and `grep`; `jq` and a linter are needed only if an optional linter is
-added later.
+The implementation reads the answers file with a regex grep rather than `yq`, so runtime
+dependencies are only `grep` and coreutils; a linter is needed only as an optional secondary
+check (`scripts/test-template.sh` lints rendered YAML when `yamllint` is present).
 
 ---
 
@@ -382,6 +382,7 @@ Consequences:
 | A directory whose files are all excluded | directory may still be created, empty | harmless, but do not assert absence of dirs |
 | **`copier update` on an untagged template** | Copier records an **abbreviated** SHA, then on update clones with a filtered transport where an abbreviated SHA cannot be resolved: `error: pathspec '8204256' did not match any file(s) known to git`. You cannot `fetch` a short SHA | **`copier update` does not work at all until the template has a tag.** The plan's "pin the template to a tag, never HEAD" is therefore a hard requirement, not a preference. A tag is a fetchable ref, so it resolves |
 | A payload file containing `${{ ... }}` or Tera `{{ ... }}` | Copier renders them as Jinja and either errors or silently substitutes | wrap in `{% raw %}`; a whole-file wrapper for workflows with no answers, and for `cliff.toml`, whose Tera syntax is near-identical to Jinja's |
+| **`copier copy` on a tagged template with a dirty or advanced working tree** | Copier checks out the **latest tag**, not HEAD and not the working tree. Verified with the template 5 commits past `v0.1.0`: the render contained `v0.1.0` content, and `.copier-answers.yml` recorded `_commit: v0.1.0`. Passing `--vcs-ref HEAD` does not change this | **Merging to `main` does not ship anything.** A change reaches generated repositories only after it is tagged. This makes the tag a release step, not a bookkeeping one — and it means the two suites that render from a purpose-built snapshot are testing the working tree, which is what we want, while a real consumer gets the tag |
 
 ## 7. Build phases
 
@@ -520,8 +521,12 @@ metadata for each tool. Three material defects were found; §3, §7 and §9 abov
 | 10 | `ci.yml` used `secrets: inherit`, handing every secret in the caller to the shared workflow | medium | Removed. A generic CI caller needs only the automatic token, scoped by the caller's `permissions:` |
 | 11 | Copier's default `inline` conflict mode leaves merge markers **inside** the files, which `create-pull-request` would commit as a silently wrong merge | high | `--conflict=rej` plus an explicit step that fails the sync and prints the `.rej` files |
 | 12 | `${{ }}` interpolated directly into `run:` bodies — a template-injection pattern, and ten permissions lacked explanatory comments | low | Values passed through `env`; every permission commented |
+| 13 | The plan stated `just health` depends on `yq` + `grep`, and that the devcontainer supplies `yq` for core and `adr-tools` for docs | medium | **`yq` is used nowhere in the implementation.** The health surface reads `.copier-answers.yml` with a regex grep (decision 7's dependency-free rationale), so its only dependencies are `grep` and coreutils. Corrective rows: §3's tooling-coupling paragraph and §10.2 no longer claim `yq`; the devcontainer installs `copier`, `git-cliff` and `just`, and `adr-tools` is optional (the ADR index offers it as a convenience) |
+| 14 | Nothing in the plan recorded *when* a merged change reaches generated repositories | high | Verified: Copier copies the **latest tag**, so merging to `main` ships nothing until a tag is pushed. Added to §6.10. This is why phase 8 must be tagged, and why the first tag (`v0.1.0`) preceded a working sync |
+| 15 | A README draft linked `docs/adr/README.md`, which the `docs` module ships to generated repositories but this repository never had | low | Wrote the index (`docs/adr/README.md`, 10 records) and added a relative-link check to `scripts/test-docs.sh`, so a broken link in this repository's own docs fails the suite |
+| 16 | The phase 8 exit criterion — "a new maintainer can generate a repo from the README alone" — was prose | medium | `scripts/test-docs.sh` extracts the `copier copy` command from `README.md`, runs it against a local tagged snapshot, and asserts the result. It also asserts the documented failure (`--defaults` without `workflow_ref`), the documented `just health` exit code on a fresh repository, that every `copier.yml` question and module appears in the README, that every ADR is indexed, and that relative links resolve |
 
-Rendered workflows are now linted by `scripts/test-workflows.sh`, which runs **actionlint** and
+Rendered artifacts are now checked by `scripts/test-rendered.sh`, which runs **actionlint** and
 **zizmor** when available and skips them with a notice when not. The first run took zizmor's
 pedantic mode from 23 findings (3 high, 1 medium) to one informational finding, which is
 retained deliberately: `create-pull-request` is a no-op when there is nothing to sync and
@@ -552,7 +557,7 @@ it only ever asks one question per module.
 
 **Adopted.** Consequences: `.repolinter.json` is dropped from the shipped core set and
 recorded in ADR-0001 as declined (engine archived) or deferred (trigger: a convention the
-sentinel model cannot express). `just health` depends only on `yq` + `grep`. `alint` is
+sentinel model cannot express). `just health` depends only on `grep` and coreutils. `alint` is
 rejected for now on maturity grounds, not capability, and stays a named option if a linter is
 ever warranted.
 
