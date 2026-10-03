@@ -30,6 +30,26 @@ Reviews use [Conventional Comments](https://conventionalcomments.org/). A commen
 `issue:` is blocking; `nitpick:`, `suggestion:` and `praise:` are not. This keeps severity
 machine-visible instead of buried in tone.
 
+## Code ownership
+
+`.github/CODEOWNERS` names `{{ codeowners_team }}` as the owner of everything in this
+repository. GitHub rejects a CODEOWNERS file that names an owner which does not exist, or that
+it cannot resolve:
+
+```text
+Unknown owner on line 2: make sure the team @<org>/<team> exists, is publicly visible,
+and has write access to the repository
+```
+
+So that team must exist **before** this file means anything, it must be visible to the
+repository, and it must have write access. Until then, GitHub reports the repository as having
+a broken CODEOWNERS file, and a branch protection rule requiring code owner review can block
+every pull request.
+
+If you are not ready to maintain a team, point CODEOWNERS at the organisation itself
+(the `@<org>` handle is always a valid owner) or delete the file. An owner that does not exist
+is worse than no owner, because it makes the file invalid rather than merely advisory.
+
 ## Generated files
 
 Files generated from the repository template are never hand-edited: the next template sync
