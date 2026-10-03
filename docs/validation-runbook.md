@@ -149,7 +149,7 @@ Run against a new organisation on the **free** plan, template `v0.2.1`. Probes: 
 
 | Item | Result | Evidence |
 | :--- | :--- | :--- |
-| 1 devcontainer | **not run** — no container runtime on this machine | — |
+| 1 devcontainer | **pass** | built on every push since CI was added; inside it `just 1.58.0`, `git-cliff 2.14.2` and `copier 9.18.2` all resolve, and `just health` returns 1 as documented. **The first run failed** — the container had never worked (§5.9) |
 | 2 tagged copy | **pass** | `_commit: v0.1.1` over `gh:TKhoi-labs/repo-template`; core 🟡 for `README.md`; six ❓; exit 1 |
 | 3 Settings app | **not run** — web-UI install; the gate is softer than this document claimed (§5.7) | label auto-created, no colour or description |
 | 4 SHA resolves | **pass** | `ci / ci` check ran and passed in both probes |
@@ -571,6 +571,31 @@ organisation owns it; and ADR-0010 records the reasoning and the trigger for rev
 
 Worth noting what the organisation got for free: default setup chose `actions` as its language,
 so CodeQL analyses the workflow files themselves in repositories that contain no other code.
+
+### 5.9 The devcontainer had never worked — **fixed in `v0.3.2`**
+
+Item 1 was recorded as "not run: no container runtime" for the whole build, and was described as
+the least-verified file in the repository. Adding CI turned "not run" into a failure within one
+run:
+
+```text
+error: externally-managed-environment
+postCreateCommand from devcontainer.json failed with exit code 1
+Error: Command failed: /bin/sh -c python3 -m pip install --user copier git-cliff
+```
+
+Ubuntu 24.04 refuses `pip install --user` outside a virtual environment (PEP 668). The
+devcontainer had been valid JSON, structurally sound, and **incapable of completing its own
+setup** — for every repository that enabled the `env` module.
+
+**Fix:** the `python` feature already provides `pipx`, which exists for precisely this, so the
+install uses it. That also places the binaries in a directory the feature adds to `PATH` at the
+**image** level, so they are visible to non-interactive shells as well — which is what the CI
+check requires, and would not have been true of a `~/.local/bin` install.
+
+This is the clearest case in the whole build for the rule that reading a file is not
+verification. There was nothing wrong with the file to look at. The only way to find it was to
+build the container and run something inside it — which is now what CI does on every push.
 
 ---
 

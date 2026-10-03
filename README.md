@@ -15,7 +15,7 @@ still a stub, and a workflow opens a pull request when the template changes.
 | :--- | :--- |
 | Version | `v0.1.0` |
 | Local checks | `just test` — four suites, see [Working on this template](#working-on-this-template) |
-| Verified against a live org | **12 of 14 items**, on a free-plan org — see the execution record in [`docs/validation-runbook.md`](docs/validation-runbook.md). The devcontainer build and the Settings app install are outstanding |
+| Verified against a live org | **13 of 14 items**, on a free-plan org — see the execution record in [`docs/validation-runbook.md`](docs/validation-runbook.md). The Settings app install is the last one outstanding |
 
 **Copier copies the latest Git tag, not the working tree.** A change merged to `main` does
 not reach any repository generated from this template until a new tag is pushed. This is a
