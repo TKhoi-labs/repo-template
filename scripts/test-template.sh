@@ -54,7 +54,8 @@ render() {
   shift
   rm -rf "$BUILD/$name"
   # shellcheck disable=SC2086
-  $COPIER copy --defaults -d "project_name=$name" -d org_slug=example "$@" \
+  $COPIER copy --defaults -d "project_name=$name" -d org_slug=example \
+    -d workflow_ref=1111111111111111111111111111111111111111 "$@" \
     "$ROOT" "$BUILD/$name" >/dev/null 2>&1
 }
 
@@ -151,7 +152,8 @@ expect_stub_set "$BUILD/all-on" "README.md" \
 
 expect_contains "$BUILD/all-on/.commitlintrc.json" "config-conventional"
 expect_contains "$BUILD/all-on/.github/workflows/ci.yml" "uses: example/.github"
-expect_contains "$BUILD/all-on/.github/workflows/ci.yml" "@v1"
+expect_contains "$BUILD/all-on/.github/workflows/ci.yml" \
+  "@1111111111111111111111111111111111111111"
 expect_contains "$BUILD/all-on/.github/workflows/commitlint.yml" "@commitlint/cli"
 expect_contains "$BUILD/all-on/.github/workflows/commitlint.yml" "base.sha"
 expect_contains "$BUILD/all-on/.github/workflows/scorecard.yml" "ossf/scorecard-action"

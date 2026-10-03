@@ -46,9 +46,17 @@ org_slug:
 workflow_ref:
   type: str
   help: >-
-    Tag of the shared org .github reusable workflows to pin to
-    (never a branch).
-  default: "v1"
+    Full 40-character commit SHA of the shared org .github workflow that
+    ci.yml calls. Get it with:
+    gh api repos/<org>/.github/commits/main --jq .sha
+    A tag is deliberately not accepted (ADR-0009): a mutable ref can be
+    repointed at different code after review, and the caller runs in every
+    repository.
+  default: ""
+  validator: >-
+    {% if workflow_ref and not (workflow_ref | regex_search('^[0-9a-f]{40}$')) %}
+    workflow_ref must be a full 40-character lowercase commit SHA, not a tag.
+    {% endif %}
 
 license:
   type: str
@@ -96,6 +104,9 @@ module_ci:
   validator: >-
     {% if module_ci and not org_slug %}
     module_ci requires org_slug: ci.yml calls a workflow in your org .github repo.
+    {% endif %}
+    {% if module_ci and not (workflow_ref | regex_search('^[0-9a-f]{40}$')) %}
+    module_ci requires workflow_ref to be a full 40-character commit SHA.
     {% endif %}
 
 module_deps:
