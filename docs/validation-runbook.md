@@ -156,7 +156,7 @@ Run against a new organisation on the **free** plan, template `v0.2.1`. Probes: 
 | 5 sync PR triggers CI | **pass** | PR #1 in `probe-min`, author `app/tkhoi-labs-copier-sync`; commitlint and `ci / ci` **ran on it** |
 | 6 divergence fails | **pass** | `probe-conflict`: `##[error]Repository has diverged.` + `./CONTRIBUTING.md.rej`; PR and auto-merge steps skipped; **0 PRs created** |
 | 7 auto-merge | **pass** | PR #1 merged; `probe-min` main advanced to `v0.2.1` |
-| 8 fleet `workflow_ref` bump | **not run live** — verified locally in `test-matrix.sh` | — |
+| 8 fleet `workflow_ref` bump | **pass** | `a58db51b…` reached both probes via one `_migrations` entry, changing `.copier-answers.yml` and `ci.yml` and nothing else. `probe-allon` came through the sync PR (updated in place, `ci / ci` then passing against the new shared workflow); `probe-min` needed the documented manual step — see §5.3 |
 | 9 release notes | **pass** | release `v0.1.0`; notes render `## [0.1.0] - 2026-10-03` |
 | 10 Scorecard publishes | **pass** | score 5.5 published to the OpenSSF API; **Pinned-Dependencies 10/10** — "4 out of 4 third-party GitHubAction dependencies pinned" — with **no finding for the reusable-workflow caller** |
 | P1 publish with tags | **pass** | `v0.1.0` … `v0.2.1` |
@@ -412,6 +412,19 @@ Hand-applying the change does **not** work, and the reason is worth knowing: Cop
 template's diff as a **patch**, so a file that already carries the new content in the patched
 region makes the patch fail to apply — the sync reports a conflict on a file that is in fact
 already correct. Both facts are now recorded in the workflow itself.
+
+**Confirmed live, the same day.** Rolling the shared-workflow pin forward reproduced it exactly
+as written: `probe-allon` (on `v0.2.4`) took the bump through its sync PR, and `probe-min` —
+recorded at `v0.2.1`, whose sync workflow predates the fix — was rejected with
+
+```text
+! [remote rejected] chore/copier-sync -> chore/copier-sync
+(refusing to allow a GitHub App to create or update workflow `.github/workflows/ci.yml`
+without `workflows` permission)
+```
+
+and advanced only after one manual `copier update --defaults --trust`. The remedy documented in
+§5.3 is the remedy that was required.
 
 ### 5.4 The generated CODEOWNERS was invalid — **fixed in `v0.2.1`**
 

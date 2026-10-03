@@ -205,10 +205,9 @@ The sync pull request, the settings-gated label, Scorecard publishing and releas
 real tag were verified against a live organisation on 2026-10-03. The execution record, with
 its evidence, is [`docs/validation-runbook.md`](validation-runbook.md) §4.
 
-Three items remain unverified: the **devcontainer build** (needs a container runtime), the
+Two items remain unverified: the **devcontainer build** (needs a container runtime) and the
 **Settings app install** (a web-UI step, and its real effect is narrower than assumed — labels
-are created by the sync itself, the app only styles them), and the **fleet-wide `workflow_ref`
-bump**.
+are created by the sync itself, the app only styles them).
 
 That document also records the four defects the live run found. All four share a shape: they
 are invisible to rendering, linting and unit tests, and appear only in an organisation, on a
