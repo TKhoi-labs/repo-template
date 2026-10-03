@@ -49,8 +49,19 @@ jobs:
           pipx install rust-just
           pipx install zizmor
           go install github.com/rhysd/actionlint/cmd/actionlint@latest
+          # Later steps must be able to find these. pipx installs console
+          # scripts into a directory that is not on the runner's PATH by
+          # default, which is how the first run of this job failed with exit
+          # code 127 rather than a test failure.
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
       - name: Run the suites
+        env:
+          # The suites default to `uvx copier`, and no `uv` is installed here,
+          # so name the binary explicitly rather than installing a second
+          # package manager to satisfy a default.
+          COPIER: copier
         run: |
           for suite in test-template test-health test-matrix test-rendered test-docs; do
             echo "=== $suite ==="
