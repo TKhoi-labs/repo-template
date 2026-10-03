@@ -548,6 +548,30 @@ would rather have a visible skip than a confusing failure.
 | item 2 expected `_commit: v0.1.0` | the **latest tag**, whatever that is. It read `v0.1.1` when this ran. Hard-coding a version in an expectation is how that line went stale in a day |
 | *assumed during the run:* required status checks block direct pushes to a protected branch | they **warn and permit** when `enforce_admins: false`. GitHub printed `Required status check "ci / ci" is expected` and the admin push succeeded — worth knowing before concluding a check is enforced |
 
+### 5.8 Code scanning cannot be managed from a repository — **resolved: documentation, not a module**
+
+CodeQL is the one security control this template does not own, decided from evidence rather than
+preference. Three observations on a live organisation:
+
+| Attempt | Result |
+| :--- | :--- |
+| change default setup per repository — org admin, `repo`-scoped token | `422 Code scanning default setup cannot be modified. This setting is controlled by organization administrators.` |
+| read it from a workflow — `GITHUB_TOKEN` with `security-events: write` | `403 Resource not accessible by integration` |
+| ship `codeql.yml` while the organisation applies default setup | disabled by GitHub, **silently** |
+
+The first two say the setting is locked to organisation administrators, so no repository workflow
+can enable it — and because the automatic token cannot even *read* it, no workflow can verify it
+either. The third is the dangerous one: a shipped workflow would be present, reviewable and
+apparently correct while doing nothing at all — the same shape as the conditional gitleaks scan
+rejected in §5.5.
+
+**Resolution: no module, no workflow.** Code scanning is documented as an organisation
+prerequisite alongside the others in this section; the generated `SECURITY.md` states that the
+organisation owns it; and ADR-0010 records the reasoning and the trigger for revisiting.
+
+Worth noting what the organisation got for free: default setup chose `actions` as its language,
+so CodeQL analyses the workflow files themselves in repositories that contain no other code.
+
 ---
 
 ## 6. Evidence and exit criteria

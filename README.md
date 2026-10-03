@@ -112,6 +112,13 @@ Please ensure that Dependency graph is enabled
 There is no *Dependency graph* toggle anywhere in the UI, and a public repository has nothing to
 enable locally — the graph arrives with Dependabot, which is why applying the features org-wide
 is the fix.
+
+**Code scanning is not managed here, deliberately.** CodeQL complements this module but cannot
+be part of it: default setup is a repository *setting* that organisation administrators control,
+no repository workflow can enable it *or even read it*, and a `codeql.yml` shipped alongside an
+org-wide default setup is disabled by GitHub without failing. Enable it in the organisation's
+**Advanced Security → Global settings**; the reasoning and the evidence are in
+[ADR-0010](docs/adr/0010-do-not-manage-code-scanning-from-the-template.md).
 | **release** | you publish a versioned artifact | `cliff.toml`, a release workflow *(requires `ci`)* |
 | **ops** | the repo is deployed or running | runbooks, observability config *(requires `ci`)* |
 
