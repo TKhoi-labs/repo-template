@@ -214,8 +214,10 @@ The sync pull request, the settings-gated label, Scorecard publishing and releas
 real tag were verified against a live organisation on 2026-10-03. The execution record, with
 its evidence, is [`docs/validation-runbook.md`](validation-runbook.md) §4.
 
-One item remains unverified: the **Settings app install** — a web-UI step, and its real effect is
-narrower than assumed, since labels are created by the sync itself and the app only styles them.
+The **Settings app** is installed and verified working for two of its three sections: the repository
+feature block and the label colours and descriptions come from `.github/settings.yml`. Its
+`branches:` block does nothing on the hosted app and reports nothing — see §5.10, which also records
+why the file is not at fault.
 
 The **devcontainer** used to be the glaring gap here: valid JSON, never built. It is now built on
 every push, which is how it turned out never to have worked — see §5.9 of the runbook.

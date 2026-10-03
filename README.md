@@ -15,7 +15,7 @@ still a stub, and a workflow opens a pull request when the template changes.
 | :--- | :--- |
 | Version | `v0.1.0` |
 | Local checks | `just test` — four suites, see [Working on this template](#working-on-this-template) |
-| Verified against a live org | **13 of 14 items**, on a free-plan org — see the execution record in [`docs/validation-runbook.md`](docs/validation-runbook.md). The Settings app install is the last one outstanding |
+| Verified against a live org | **13 of 14 items fully verified**, plus item 3 partly: the Settings app applies the repository feature block and the labels, but not `branches:` (§5.10). All on a free-plan org — see the execution record in [`docs/validation-runbook.md`](docs/validation-runbook.md) |
 
 **Copier copies the latest Git tag, not the working tree.** A change merged to `main` does
 not reach any repository generated from this template until a new tag is pushed. This is a
@@ -184,7 +184,7 @@ runs `copier update`, and opens or updates a pull request on `chore/copier-sync`
 | Prerequisite | Why |
 | :--- | :--- |
 | `COPIER_SYNC_APP_ID` variable + `COPIER_SYNC_APP_PRIVATE_KEY` secret from a **GitHub App** | a PR opened with the default `GITHUB_TOKEN` triggers no workflows, so required checks never report and the PR is blocked forever. The token is minted per run because installation tokens expire after one hour, so it cannot be stored as a secret |
-| The [Settings app](https://github.com/apps/settings) installed | the sync PR uses the `template-sync` label, which only exists once settings are applied |
+| The [Settings app](https://github.com/apps/settings) installed | optional, and narrower than it looks: it applies the `repository:` feature block and the label colours and descriptions, but **not** the `branches:` protection block ([runbook §5.10](docs/validation-runbook.md)), and installing it does nothing to existing repositories until something pushes `settings.yml`. The sync PR does not depend on it — `create-pull-request` creates a missing `template-sync` label itself |
 | Required status checks configured | `COPIER_SYNC_AUTO_MERGE=true` means *merge when checks pass*; with no required checks it means **merge immediately** |
 | Repository variables `COPIER_SYNC_ENABLED`, `COPIER_SYNC_AUTO_MERGE`, `GHAS_ENABLED` | see the runbook |
 

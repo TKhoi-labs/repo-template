@@ -151,7 +151,7 @@ Run against a new organisation on the **free** plan, template `v0.2.1`. Probes: 
 | :--- | :--- | :--- |
 | 1 devcontainer | **pass** | built on every push since CI was added; inside it `just 1.58.0`, `git-cliff 2.14.2` and `copier 9.18.2` all resolve, and `just health` returns 1 as documented. **The first run failed** — the container had never worked (§5.9) |
 | 2 tagged copy | **pass** | `_commit: v0.1.1` over `gh:TKhoi-labs/repo-template`; core 🟡 for `README.md`; six ❓; exit 1 |
-| 3 Settings app | **not run** — web-UI install; the gate is softer than this document claimed (§5.7) | label auto-created, no colour or description |
+| 3 Settings app | **partial** — installed on all repositories; it applies `repository:` and `labels:` but **not** `branches:` (§5.10) | labels gained their colours and descriptions; repository features moved off GitHub's defaults; branch protection unchanged on both probes tested |
 | 4 SHA resolves | **pass** | `ci / ci` check ran and passed in both probes |
 | 5 sync PR triggers CI | **pass** | PR #1 in `probe-min`, author `app/tkhoi-labs-copier-sync`; commitlint and `ci / ci` **ran on it** |
 | 6 divergence fails | **pass** | `probe-conflict`: `##[error]Repository has diverged.` + `./CONTRIBUTING.md.rej`; PR and auto-merge steps skipped; **0 PRs created** |
@@ -219,13 +219,19 @@ just health
 
 ### Item 3 — the Settings app applies `settings.yml`
 
-Push a change to `.github/settings.yml` on the probe repository.
+Install the app once for the org, then push a change to `.github/settings.yml` on a probe
+repository. Installation alone does nothing: the app has no `installation` handler.
 
-- **Expected:** labels appear, merge strategy changes, branch protection is applied, with no
-  per-repository work after the initial app install.
-- **Failure signature:** the app silently rejects a malformed file, so labels referenced by
-  workflows (`template-sync`, `dependency`) do not exist.
-- **Evidence:** `gh label list --repo <org>/<probe>` and the branch protection API output.
+- **Expected:** the repository feature block and the label colours and descriptions are applied,
+  with no per-repository work after the install.
+- **Known limitation (§5.10):** the `branches:` block is **not** applied by the hosted app, and
+  nothing reports that. Do not read an unchanged branch protection rule as a misconfigured file —
+  the file was replayed by hand and accepted.
+- **Failure signature:** the app reports errors only to its own logs, so a section that does not
+  apply is invisible from the repository. Compare each section against the file individually rather
+  than inferring that "settings were applied".
+- **Evidence:** `gh label list --repo <org>/<probe>`, `gh api repos/<org>/<probe>` for the feature
+  block, and the branch protection API output.
 
 ### Item 4 — the shared workflow SHA resolves
 
@@ -596,6 +602,66 @@ check requires, and would not have been true of a `~/.local/bin` install.
 This is the clearest case in the whole build for the rule that reading a file is not
 verification. There was nothing wrong with the file to look at. The only way to find it was to
 build the container and run something inside it — which is now what CI does on every push.
+
+### 5.10 The Settings app applies two of its three sections — **silently**
+
+Item 3 asked whether installing [`repository-settings/app`](https://github.com/apps/settings) turns
+`.github/settings.yml` into working configuration. It is installed on every repository of the org
+with `administration: write`, and it works for `repository:` and `labels:` — but **not** for
+`branches:`, and nothing anywhere reports the failure.
+
+What the app listens for, read from its source at the deployed release (`v5.0.14`):
+
+| Event | Applies settings? |
+| :--- | :--- |
+| `push` to the default branch **where a commit modified `.github/settings.yml`** | yes |
+| `repository.edited`, when the default branch changed | yes |
+| `repository.created` | yes — although an empty repository has no file to read |
+| **`installation`** | **there is no such handler** |
+
+So installing the app changes nothing at all in existing repositories. It is inert until something
+pushes `settings.yml` — which, for a fleet generated from this template, means the next sync PR.
+
+Observed on 2026-10-03 across two repositories:
+
+| Push | `repository:` | `labels:` | `branches:` |
+| :--- | :--- | :--- | :--- |
+| `probe-allon`, unchanged file | applied — `has_wiki`, `has_projects`, `allow_merge_commit` and `delete_branch_on_merge` all moved off GitHub's defaults | applied, including a label description edited for the test | **not applied** — approvals stayed at `0` |
+| `probe-allon`, `protection: null` (a request to *delete* protection) | — | — | **not applied** — protection was still present afterwards |
+| `probe-conflict`, whose branch was unprotected | applied | applied | **not applied** — the branch is still unprotected (`404`) |
+
+The file is not at fault, and that was checked rather than assumed. All four keys the app's own
+`docs/plugins/branches.md` requires are present — it warns that a missing one means "none of the
+settings will be applied" — and the exact request its plugin builds, replayed by hand with the same
+preview headers and the same stray `headers` field it injects into the body, **succeeds**: the
+branch then requires 2 approvals and no status checks.
+
+The app's own structure explains the shape of this. Every section except `branches` is applied in a
+`Promise.all`, `branches` is applied afterwards, and errors go only to the app's own logs:
+
+```js
+return Promise.all(rest.map(...)).then(() => {
+  if (branches) return this.processSection('branches', branches)
+})
+```
+
+A `branches` failure therefore leaves all the other sections applied and reports nothing — which is
+exactly what was observed. Upstream has the matching history: issue *Branches section not working*
+([#1255](https://github.com/repository-settings/app/issues/1255)) and the fix *"fix(branches): fix
+breaking change from probot v14 since this plugin still uses the rest method"*
+([#1267](https://github.com/repository-settings/app/pull/1267)), merged 2026-03-06 and released in
+`v5.0.7`. The newest release, `v5.0.14`, contains that fix. The likeliest reading — and it is
+inference, since nothing about the hosted instance's build is public — is that the hosted app is
+running a build from before it, so the plugin calls a REST method probot v14 moved, throws, and is
+swallowed.
+
+**What this means:** branch protection is **not** delivered by the app today, so the `branches:`
+block must not be counted as configuration that works. The repository feature block and the label
+colours and descriptions do come from the file.
+
+One more fact worth having before adopting it: the app's own README warns that it "inherently
+escalates anyone with `push` permissions to the **admin** role", because that is who can commit to
+the file it obeys.
 
 ---
 
