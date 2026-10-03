@@ -1,0 +1,18 @@
+---
+# Template repo linting. Applies to the payload too, so the rules have to
+# accommodate generated files.
+extends: default
+
+rules:
+  # `uses: owner/action@<40-char-sha> # vX` cannot be wrapped in YAML. Pinning
+  # to a commit SHA is deliberate (ADR-0009), so leave room for it.
+  line-length:
+    max: 100
+  # GitHub Actions keys such as `on:` are legitimate keys. yamllint reads the
+  # bare word `on` as a YAML 1.1 boolean and flags a false positive.
+  truthy:
+    check-keys: false
+  # SHA pins carry a trailing version comment (ADR-0009). Renovate's own
+  # convention is a single space, so require exactly one.
+  comments:
+    min-spaces-from-content: 1

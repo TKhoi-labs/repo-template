@@ -1,1 +1,58 @@
-# TEMPLATE-STUB: not yet authored. Replace this file.
+# Settings as code, applied by the Settings app:
+# https://probot.github.io/apps/settings/
+#
+# Install the app once per organisation; it then reads this file in every
+# repository. Because these settings are a file, a template sync PR also
+# propagates label and branch-protection changes across the fleet.
+---
+repository:
+  name: {{ project_slug }}
+  description: {{ description | tojson }}
+  has_issues: true
+  has_projects: false
+  has_wiki: false
+  allow_squash_merge: true
+  allow_merge_commit: false
+  allow_rebase_merge: false
+  delete_branch_on_merge: true
+{%- if module_contributing %}
+  # contributing: no merge without review
+  allow_auto_merge: false
+{%- endif %}
+
+branches:
+  - name: main
+    protection:
+      required_pull_request_reviews:
+        required_approving_review_count: {% if module_contributing %}2{% else %}0{% endif %}
+        dismiss_stale_reviews: true
+      required_status_checks: null
+      enforce_admins: false
+      restrictions: null
+
+labels:
+  - name: bug
+    color: d73a4a
+    description: Something is not working
+  - name: task
+    color: 0e8a16
+    description: Work that is neither a bug nor a feature
+  - name: feature
+    color: a2eeef
+    description: New capability
+  - name: dependency
+    color: 0366d6
+    description: Dependency update
+  - name: security
+    color: b60205
+    description: Security-relevant change
+  # Conventional Comments vocabulary, so review severity is machine-visible.
+  - name: "issue: blocking"
+    color: b60205
+    description: "Conventional Comments: blocking issue"
+  - name: nitpick
+    color: fef2c0
+    description: "Conventional Comments: non-blocking nitpick"
+  - name: praise
+    color: 5319e7
+    description: "Conventional Comments: praise"

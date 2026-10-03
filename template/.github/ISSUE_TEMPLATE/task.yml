@@ -1,0 +1,29 @@
+---
+name: Task
+description: Work that is neither a bug nor a feature
+title: "task: "
+labels: ["task"]
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome
+      description: What is true once this is done? Describe the result, not the steps.
+    validations:
+      required: true
+
+  - type: textarea
+    id: done
+    attributes:
+      label: Definition of done
+      description: How will a reviewer confirm this is complete?
+    validations:
+      required: true
+
+  - type: textarea
+    id: not-doing
+    attributes:
+      label: Explicitly out of scope
+      description: What this task deliberately does not cover.
+    validations:
+      required: false

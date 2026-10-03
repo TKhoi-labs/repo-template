@@ -50,6 +50,29 @@ workflow_ref:
     (never a branch).
   default: "v1"
 
+license:
+  type: str
+  help: >-
+    License for this repository. "Proprietary" renders an
+    all-rights-reserved notice; "None" ships no LICENSE file.
+  choices:
+    - MIT
+    - Proprietary
+    - "None"
+  default: MIT
+
+copyright_holder:
+  type: str
+  help: Copyright holder named in the LICENSE file.
+  default: "{{ org_slug }}"
+  when: "{{ license != 'None' }}"
+
+license_year:
+  type: int
+  help: Copyright year named in the LICENSE file.
+  default: 2026
+  when: "{{ license != 'None' }}"
+
 # ---------------------------------------------------------------------------
 # Modules
 #

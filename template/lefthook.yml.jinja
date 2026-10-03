@@ -1,1 +1,22 @@
-# TEMPLATE-STUB: not yet authored. Replace this file.
+# Git hooks. Convenience only — hooks are bypassable with --no-verify, so
+# enforcement lives in CI. This file is owned by core so that it exists in
+# every generated repo; commits and security contribute hook entries.
+---
+pre-push:
+  commands:
+    health:
+      run: just health
+{%- if module_commits %}
+
+commit-msg:
+  commands:
+    commitlint:
+      run: npx --yes @commitlint/cli --edit {1}
+{%- endif %}
+{%- if module_security %}
+
+pre-commit:
+  commands:
+    gitleaks:
+      run: gitleaks protect --staged --no-banner
+{%- endif %}
