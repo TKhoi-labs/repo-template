@@ -85,6 +85,18 @@ you now own, permanently.
 | **contributing** | you accept outside contributions | `CONTRIBUTING.md`, `CODEOWNERS`, branch-protection hardening |
 | **env** | contributors need reproducibility | a devcontainer |
 | **security** | public repo or external users | gitleaks, OpenSSF Scorecard *(requires `ci`)* |
+
+**In an organisation, gitleaks needs a free licence key.** A personal account does not:
+
+```bash
+gh secret set GITLEAKS_LICENSE --org <org> --visibility all
+```
+
+Request one from [gitleaks.io](https://gitleaks.io) (a short form, and the key arrives by
+email). Without it the job fails on every push with *"`<org>` is an organization. License key is
+required."* The key is free, but it is validated by a third-party service which receives the
+repository name and owner — no code leaves GitHub. Note the split: the **action** is
+commercially licensed, while the **gitleaks CLI** is MIT.
 | **release** | you publish a versioned artifact | `cliff.toml`, a release workflow *(requires `ci`)* |
 | **ops** | the repo is deployed or running | runbooks, observability config *(requires `ci`)* |
 

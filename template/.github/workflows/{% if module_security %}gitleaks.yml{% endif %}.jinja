@@ -28,4 +28,10 @@ jobs:
       - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Required for organisation-owned repositories, which is why this is
+          # easy to miss: a personal account needs no key. The key is free but
+          # must be requested from gitleaks.io, and it is validated against a
+          # third-party service. Without it the job fails with
+          # "[org] is an organization. License key is required."
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
 {% endraw -%}

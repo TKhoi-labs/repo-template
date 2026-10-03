@@ -392,26 +392,44 @@ than none — the file is *invalid* rather than advisory.
 Still open as a design question: whether the default should remain a team (a guess that may
 not exist) or become the organisation handle, which is always a valid CODEOWNERS owner.
 
-### 5.5 `gitleaks` requires a licence for organisations — **OPEN**
+### 5.5 `gitleaks` requires a licence for organisations — **resolved: take the free key**
 
-Every push in an org-owned repository fails:
+Every push in an org-owned repository failed:
 
 ```text
 [TKhoi-labs] is an organization. License key is required.
-##[error]🛑 missing gitleaks license. Go grab one at gitleaks.io and store it as a GitHub
-Secret named GITLEAKS_LICENSE.
 ```
 
-`gitleaks-action` is free for personal accounts and licensed for organisations. The `security`
-module therefore ships a workflow that fails out of the box for exactly the audience its own
-condition describes ("public repo or external users"). Reading and linting the workflow could
-never reveal this; only running it in an org could.
+The `security` module shipped a workflow that failed out of the box for exactly the audience its
+own condition describes ("public repo or external users"). Reading and linting the workflow
+could never reveal this; only running it in an organisation could.
 
-| Option | Effect |
-| :--- | :--- |
-| Take a licence; set secret `GITLEAKS_LICENSE` | keeps the action; adds a paid dependency and one more prerequisite |
-| Run the `gitleaks` **CLI** in the workflow | no licence, no third-party action, one more tool to install and pin |
-| Make the job conditional on the secret existing | module appears to work while scanning nothing — the precise failure mode this build has rejected at every other step |
+Two facts decide the response, both from the action's own README:
+
+- The key is **free** — requested from gitleaks.io, it arrives by email. It is *required* for
+  organisation-owned repositories and *not required* for personal accounts, which is exactly why
+  it goes unnoticed.
+- The split is between the action and the tool: `gitleaks-action` has been **commercially
+  licensed since v2.0.0**, while the **gitleaks CLI is MIT**.
+
+**Decision: take the free key.** The alternative — running the CLI directly — was rejected
+because its version pin would be a URL inside a `run:` rather than a `uses:`, so Renovate could
+not update it. That trades a one-off signup for a permanent manual chore, which is the wrong way
+round for a template.
+
+The workflow held a **second** defect: it never passed the secret at all. It set only
+`GITHUB_TOKEN`, so the obvious fix of "store the key as a GitHub secret" would not have worked
+either. Both are now fixed:
+
+```yaml
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+```
+
+Remaining prerequisite, documented in the README: an organisation must request the free key and
+set it as an organisation secret. Worth stating for a module about secrets: the key is validated
+by a third-party service which receives the repository name and owner. No code leaves GitHub.
 
 ### 5.6 `dependency-review` fails on a fresh organisation — **OPEN**
 
