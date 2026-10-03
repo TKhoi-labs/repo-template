@@ -17,17 +17,18 @@ test-health:
 test-matrix:
     scripts/test-matrix.sh
 
-# Lint the rendered workflows with actionlint and zizmor, when available.
-test-workflows:
-    scripts/test-workflows.sh
+# Verify rendered artifacts with the real tools they depend on: actionlint,
+# zizmor, git-cliff, just, and the conflict-detection guard.
+test-rendered:
+    scripts/test-rendered.sh
 
 # Run every check on the template itself.
-test: test-template test-health test-matrix test-workflows
+test: test-template test-health test-matrix test-rendered
 
 # Lint this template repo.
 lint:
     yamllint copier.yml
-    shellcheck scripts/test-template.sh scripts/test-health.sh scripts/test-matrix.sh scripts/test-workflows.sh scripts/lib/template-snapshot.sh
+    shellcheck scripts/test-template.sh scripts/test-health.sh scripts/test-matrix.sh scripts/test-rendered.sh scripts/lib/template-snapshot.sh
 
 # Remove generated artifacts.
 clean:
