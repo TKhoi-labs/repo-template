@@ -84,11 +84,22 @@ jobs:
           private-key: ${{ secrets.COPIER_SYNC_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
           repositories: ${{ github.event.repository.name }}
-          # Without this the minted token inherits every permission the
-          # installation holds. These two are all create-pull-request needs
-          # (zizmor: github-app).
+          # Without these the minted token inherits every permission the
+          # installation holds (zizmor: github-app). These three are what
+          # create-pull-request needs. `workflows` is not optional: the sync
+          # commits template changes to .github/workflows/, and GitHub refuses
+          # that push without it:
+          #
+          #   refusing to allow a GitHub App to create or update workflow
+          #   `.github/workflows/x.yml` without `workflows` permission
+          #
+          # Scoping the token to contents + pull-requests alone therefore breaks
+          # the sync on exactly the changes a template makes most often. The
+          # rejection names the App permission rather than the token's, which
+          # makes it easy to misdiagnose.
           permission-contents: write
           permission-pull-requests: write
+          permission-workflows: write
 
       - name: Open a pull request
         # peter-evans/create-pull-request rather than `gh pr create`, which
