@@ -1,1 +1,16 @@
-# TEMPLATE-STUB: not yet authored. Replace this file.
+# gitleaks configuration for {{ project_slug }}.
+#
+# The default rules cover the common cases. This file exists so that false
+# positives are fixed once, in the repository, instead of being ignored by hand
+# on every run.
+title = "{{ project_slug }}"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known false positives"
+paths = [
+  # Build output generated locally; never committed.
+  '''\.build/''',
+]

@@ -1,1 +1,31 @@
-# TEMPLATE-STUB: not yet authored. Replace this file.
+{% raw %}---
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # pipx rather than a third-party action: one less pin to maintain.
+      - name: Install git-cliff
+        run: pipx install git-cliff
+
+      - name: Generate release notes
+        run: git-cliff --current --output RELEASE_NOTES.md
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "$GITHUB_REF_NAME" --notes-file RELEASE_NOTES.md
+{% endraw -%}

@@ -1,1 +1,17 @@
-# TEMPLATE-STUB: not yet authored. Replace this file.
+---
+# CI is a thin caller: the workflow body lives in the shared org .github
+# repository, so changing CI does not mean editing every repository (ADR-0003).
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: {{ org_slug }}/.github/.github/workflows/ci.yml@{{ workflow_ref }}
+    secrets: inherit

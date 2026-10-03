@@ -1,3 +1,14 @@
 {
-  "_stub": "TEMPLATE-STUB: not yet authored."
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "commitMessagePrefix": "chore(deps):",
+  "labels": ["dependency"],
+  "schedule": ["before 6am on monday"],
+  "packageRules": [
+    {
+      "description": "Group action bumps so they do not flood the review queue",
+      "matchManagers": ["github-actions"],
+      "groupName": "github actions"
+    }
+  ]
 }

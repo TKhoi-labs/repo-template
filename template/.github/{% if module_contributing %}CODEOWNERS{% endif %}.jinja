@@ -1,1 +1,7 @@
-# TEMPLATE-STUB: not yet authored. Replace this file.
+# Default owner for everything not matched below.
+* {{ codeowners_team }}
+
+# Template-managed paths: the next sync rewrites these, so reviewing changes
+# here means reviewing the template, not this repository.
+/.copier-answers.yml {{ codeowners_team }}
+/.github/workflows/ {{ codeowners_team }}

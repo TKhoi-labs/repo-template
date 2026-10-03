@@ -1,1 +1,48 @@
-<!-- TEMPLATE-STUB: not yet authored. Replace this file. -->
+{%- set modules = [
+  ('core', true, 'always present'),
+  ('commits', module_commits, 'wants enforced history'),
+  ('ci', module_ci, 'any automated check'),
+  ('deps', module_deps, 'repo has any dependency'),
+  ('docs', module_docs, 'architecture exists'),
+  ('contributing', module_contributing, 'accepts outside contributions'),
+  ('env', module_env, 'reproducible local tooling'),
+  ('security', module_security, 'public / external users'),
+  ('release', module_release, 'publishes a versioned artifact'),
+  ('ops', module_ops, 'deployed / running'),
+] -%}
+# Architecture
+
+This repository was generated from a repository template. Modules are enabled by *condition*:
+each one states the trigger that justifies it, because a module with no trigger is maintenance
+nobody asked for.
+
+## Modules
+
+| Module | Enabled | Condition |
+| :--- | :--- | :--- |
+{% for name, on, condition in modules -%}
+| `{{ name }}` | {% if on %}yes{% else %}no{% endif %} | {{ condition }} |
+{% endfor %}
+## Repository state
+
+`just health` reports every module in one of four states, from three sources:
+
+| Source | Answers |
+| :--- | :--- |
+| `.copier-answers.yml` | which modules are enabled |
+| `scripts/health.sh` file lists | whether an enabled module is finished |
+| `docs/adr/0001-initial-deferrals.md` | why a disabled module is disabled |
+
+| Glyph | State |
+| :--- | :--- |
+| ✅ | on — complete |
+| 🟡 | on — incomplete: files are still stubs |
+| ⏸ | deferred, with its trigger recorded |
+| ⛔ | declined, with its reason recorded |
+| ❓ | unrecorded: disabled with no decision. `just health` fails |
+
+## Generated files
+
+Everything here is generated from a template. Hand-editing a generated file makes the next
+sync conflict, so customisations belong in files no module owns. A failed sync is the intended
+outcome when a repository has diverged.

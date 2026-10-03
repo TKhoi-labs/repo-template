@@ -93,6 +93,10 @@ module_ci:
     ci — add CI as a thin caller of the shared reusable workflow?
     (condition: any automated check)
   default: true
+  validator: >-
+    {% if module_ci and not org_slug %}
+    module_ci requires org_slug: ci.yml calls a workflow in your org .github repo.
+    {% endif %}
 
 module_deps:
   type: bool
@@ -154,3 +158,12 @@ module_ops:
     {% if module_ops and not module_ci %}
     module_ops requires module_ci: deploy pipelines are CI jobs.
     {% endif %}
+
+# CODEOWNERS cannot be derived: it needs a real GitHub team.
+codeowners_team:
+  type: str
+  help: >-
+    GitHub team that owns this repository, in CODEOWNERS form
+    (for example "@acme/maintainers").
+  default: "@{{ org_slug }}/maintainers"
+  when: "{{ module_contributing }}"
