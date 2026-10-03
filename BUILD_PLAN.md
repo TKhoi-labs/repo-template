@@ -516,6 +516,16 @@ metadata for each tool. Three material defects were found; §3, §7 and §9 abov
 | 6 | `env` tooling coupling was implicit | medium | Declared in `justfile` recipes (§3) |
 | 7 | **`.copier-answers.yml` is never written by Copier** — the manifest the health surface reads was assumed to be automatic | **blocker** | Payload must ship `{{ _copier_conf.answers_file }}.jinja`; `template-test` asserts its presence and module keys (§6.9) |
 | 8 | **`copier update` is inoperable on an untagged template** — it fails with an unresolvable abbreviated SHA | **blocker** | The template must be tagged before sync can work at all; asserted by `test-matrix` (§6.10) |
+| 9 | Workflow permissions were over-broad: three high-severity `excessive-permissions` findings (workflow-level `contents: write`, `pull-requests: write`) plus a redundant `permissions: read-all` | high | Workflow-level `permissions: {}`; each job declares its own scope with the reason as a comment |
+| 10 | `ci.yml` used `secrets: inherit`, handing every secret in the caller to the shared workflow | medium | Removed. A generic CI caller needs only the automatic token, scoped by the caller's `permissions:` |
+| 11 | Copier's default `inline` conflict mode leaves merge markers **inside** the files, which `create-pull-request` would commit as a silently wrong merge | high | `--conflict=rej` plus an explicit step that fails the sync and prints the `.rej` files |
+| 12 | `${{ }}` interpolated directly into `run:` bodies — a template-injection pattern, and ten permissions lacked explanatory comments | low | Values passed through `env`; every permission commented |
+
+Rendered workflows are now linted by `scripts/test-workflows.sh`, which runs **actionlint** and
+**zizmor** when available and skips them with a notice when not. The first run took zizmor's
+pedantic mode from 23 findings (3 high, 1 medium) to one informational finding, which is
+retained deliberately: `create-pull-request` is a no-op when there is nothing to sync and
+updates an existing pull request instead of failing, which `gh pr create` does not do.
 
 ### 10.2 Stub detection engine — **DECIDED: sentinel grep in `scripts/health.sh`**
 
