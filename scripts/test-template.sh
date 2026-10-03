@@ -12,6 +12,13 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COPIER="${COPIER:-uvx copier}"
 BUILD="$ROOT/.build"
 
+# All renders come from a tagged snapshot of the working tree, so results do not
+# depend on whether this repo happens to have release tags (see the source file).
+# shellcheck source=scripts/lib/template-snapshot.sh
+source "$ROOT/scripts/lib/template-snapshot.sh"
+TEMPLATE="$BUILD/template-src"
+make_template_snapshot "$ROOT" "$TEMPLATE"
+
 MODULES=(commits ci deps docs contributing env security release ops)
 
 pass=0
@@ -56,7 +63,7 @@ render() {
   # shellcheck disable=SC2086
   $COPIER copy --defaults -d "project_name=$name" -d org_slug=example \
     -d workflow_ref=1111111111111111111111111111111111111111 "$@" \
-    "$ROOT" "$BUILD/$name" >/dev/null 2>&1
+    "$TEMPLATE" "$BUILD/$name" >/dev/null 2>&1
 }
 
 # Build the "everything off" argument list once.
@@ -129,7 +136,7 @@ echo "== negative DAG =="
 for m in security release ops; do
   rm -rf "$BUILD/negative-$m"
   if $COPIER copy --defaults -d "project_name=negative-$m" \
-      -d module_ci=false -d "module_$m=true" "$ROOT" "$BUILD/negative-$m" \
+      -d module_ci=false -d "module_$m=true" "$TEMPLATE" "$BUILD/negative-$m" \
       >/dev/null 2>&1; then
     bad "module_$m without ci should have failed"
   else

@@ -11,6 +11,11 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COPIER="${COPIER:-uvx copier}"
 BUILD="$ROOT/.build/health"
+
+# shellcheck source=scripts/lib/template-snapshot.sh
+source "$ROOT/scripts/lib/template-snapshot.sh"
+TEMPLATE="$BUILD/template-src"
+
 MODULES="commits ci deps docs contributing env security release ops"
 
 pass=0
@@ -30,8 +35,9 @@ for m in $MODULES; do off_args+=(-d "module_$m=false"); done
 
 rm -rf "$BUILD"
 mkdir -p "$BUILD"
+make_template_snapshot "$ROOT" "$TEMPLATE"
 $COPIER copy --defaults -d project_name=health-base "${off_args[@]}" \
-  "$ROOT" "$BUILD/base" >/dev/null 2>&1
+  "$TEMPLATE" "$BUILD/base" >/dev/null 2>&1
 
 fixture() {
   rm -rf "${BUILD:?}/$1"

@@ -12,13 +12,18 @@ test-template:
 test-health:
     scripts/test-health.sh
 
+# Matrix-level properties: bundles, ownership disjointness, action pinning,
+# and `copier update --defaults` being a no-op on every configuration.
+test-matrix:
+    scripts/test-matrix.sh
+
 # Run every check on the template itself.
-test: test-template test-health
+test: test-template test-health test-matrix
 
 # Lint this template repo.
 lint:
     yamllint copier.yml
-    shellcheck scripts/test-template.sh scripts/test-health.sh
+    shellcheck scripts/test-template.sh scripts/test-health.sh scripts/test-matrix.sh scripts/lib/template-snapshot.sh
 
 # Remove generated artifacts.
 clean:
