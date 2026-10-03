@@ -144,7 +144,7 @@ runs `copier update`, and opens or updates a pull request on `chore/copier-sync`
 
 | Prerequisite | Why |
 | :--- | :--- |
-| A repository variable `COPIER_SYNC_TOKEN` secret holding a **GitHub App** installation token | a PR opened with the default `GITHUB_TOKEN` triggers no workflows, so required checks never report and the PR is blocked forever |
+| `COPIER_SYNC_APP_ID` variable + `COPIER_SYNC_APP_PRIVATE_KEY` secret from a **GitHub App** | a PR opened with the default `GITHUB_TOKEN` triggers no workflows, so required checks never report and the PR is blocked forever. The token is minted per run because installation tokens expire after one hour, so it cannot be stored as a secret |
 | The [Settings app](https://github.com/apps/settings) installed | the sync PR uses the `template-sync` label, which only exists once settings are applied |
 | Required status checks configured | `COPIER_SYNC_AUTO_MERGE=true` means *merge when checks pass*; with no required checks it means **merge immediately** |
 | Repository variables `COPIER_SYNC_ENABLED`, `COPIER_SYNC_AUTO_MERGE`, `GHAS_ENABLED` | see the runbook |

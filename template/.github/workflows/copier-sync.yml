@@ -9,6 +9,9 @@
 # The token MUST be a GitHub App installation token or a PAT, never the default
 # GITHUB_TOKEN. Pull requests opened with GITHUB_TOKEN do not trigger CI, so
 # branch protection would block the sync PR forever.
+#
+# An installation token cannot be stored as a repository secret: it expires
+# after one hour. It is minted per run from the app id and private key instead.
 name: copier-sync
 
 on:
@@ -69,6 +72,24 @@ jobs:
             exit 1
           fi
 
+      # Installation access tokens expire after one hour, so this cannot be a
+      # repository secret. Only the private key is secret; the app id is a
+      # variable. Scoped to the repository being synced rather than the whole
+      # organisation, so a leaked token reaches one repository, not all of them.
+      - name: Mint an installation token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.COPIER_SYNC_APP_ID }}
+          private-key: ${{ secrets.COPIER_SYNC_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          # Without this the minted token inherits every permission the
+          # installation holds. These two are all create-pull-request needs
+          # (zizmor: github-app).
+          permission-contents: write
+          permission-pull-requests: write
+
       - name: Open a pull request
         # peter-evans/create-pull-request rather than `gh pr create`, which
         # zizmor suggests at low confidence: this action is a no-op when there
@@ -77,7 +98,10 @@ jobs:
         id: pr
         uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6
         with:
-          token: ${{ secrets.COPIER_SYNC_TOKEN }}
+          # The app token, never GITHUB_TOKEN: a pull request opened with
+          # GITHUB_TOKEN triggers no workflows, so required checks never report
+          # and branch protection blocks the sync forever.
+          token: ${{ steps.app-token.outputs.token }}
           branch: chore/copier-sync
           delete-branch: true
           labels: template-sync
@@ -108,7 +132,7 @@ jobs:
           steps.pr.outputs.pull-request-number &&
           vars.COPIER_SYNC_AUTO_MERGE == 'true'
         env:
-          GH_TOKEN: ${{ secrets.COPIER_SYNC_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           # Passed through the environment rather than interpolated into the
           # script body: ${{ }} inside `run:` is expanded before the shell sees
           # it, which is a template-injection path for untrusted values.

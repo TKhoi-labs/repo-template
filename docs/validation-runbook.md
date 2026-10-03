@@ -73,12 +73,28 @@ It must declare `workflow_call` and must not require inputs or secrets the calle
 pass. Record the commit: `gh api repos/<org>/.github/commits/main --jq .sha`.
 
 **P3. Create a GitHub App for the sync token** — preferred over a PAT because it is
-org-owned, revocable, auditable, and not tied to a person's account.
+org-owned, revocable, auditable, and not tied to a person's account. Create it under the
+**organisation** (`github.com/organizations/<org>/settings/apps/new`), not a personal
+account.
 
 - Repository permissions: **Contents: read and write**, **Pull requests: read and write**,
   Metadata: read.
-- Install it on the probe repository, or on the whole org.
-- Store its installation token as the Actions secret `COPIER_SYNC_TOKEN`.
+- **Workflows: read and write** — without it the sync pull request is rejected the moment it
+  touches `.github/workflows/`, which the template always does
+  (`refusing to allow a GitHub App to create or update workflow … without workflows
+  permission`).
+- Webhook: **deactivate it**. Nothing consumes events, and an active webhook needs a URL.
+- "Where can this app be installed": **Only on this account**, so it stays org-scoped.
+- Install it on the repository or the whole org.
+
+**Do not store the installation token as a secret.** Installation access tokens expire after
+one hour, so a repository secret cannot hold one. Record the **App ID** and generate a
+**private key**; the sync workflow mints a token per run:
+
+```bash
+gh variable set COPIER_SYNC_APP_ID --body "<app-id>" --repo <org>/<repo>
+gh secret   set COPIER_SYNC_APP_PRIVATE_KEY < private-key.pem --repo <org>/<repo>
+```
 
 The default `GITHUB_TOKEN` must not be used: pull requests it opens do not trigger workflows,
 so branch protection blocks the sync PR forever. This is the single most likely reason item 5
