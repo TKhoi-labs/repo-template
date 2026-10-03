@@ -4,9 +4,9 @@ Phase 7 exists because the local suite proves everything that *can* be proven wi
 GitHub organisation, and nothing that cannot. This document is the procedure for converting
 the remaining claims into verified ones.
 
-`just test` currently runs **143 checks**: rendering, module gating, the DAG, file ownership,
+`just test` currently runs **155 checks**: rendering, module gating, the DAG, file ownership,
 action pinning, the four-state health surface, `copier update` idempotency, answer migration,
-and workflow linting.
+workflow linting, and the rendered-artifact guards in §1.
 
 ---
 
@@ -14,23 +14,34 @@ and workflow linting.
 
 | | Items | Requires | Who |
 | :--- | :--- | :--- | :--- |
-| **7a** | conflict path, `cliff.toml` rendering, generated `justfile`, devcontainer schema | only local tools | automatable — this can join `just test` |
-| **7b** | everything that touches GitHub's servers | an org, a GitHub App, the Settings app | a human with org admin, roughly half a day |
+| **7a** | conflict detection, `cliff.toml` rendering, generated `justfile` | only local tools | **done** — these are now part of `just test` |
+| **7b** | everything that touches GitHub's servers, plus the devcontainer build | an org, a GitHub App, the Settings app, a container runtime | a human with org admin, roughly half a day |
 
-Do 7a first. It is free, it catches real defects, and it shrinks 7b to the part that genuinely
-needs a live org.
+### 7a — done, and it paid for itself immediately
 
-### 7a — locally verifiable
-
-| # | Claim | How |
+| # | Claim | Status |
 | :--- | :--- | :--- |
-| a1 | A diverged repository produces `.rej` files and a failing exit, never a silent merge | change the same lines in the template *and* the destination, run `copier update --conflict=rej`, assert non-zero + `.rej` present |
-| a2 | `cliff.toml` actually renders | `git-cliff` is installed locally: run it against a scratch repo with Conventional Commits and assert grouped output |
-| a3 | The generated `justfile` parses | `just --list` in a rendered repo |
-| a4 | `devcontainer.json` is schema-valid | validate against the devcontainer JSON schema (this is **not** a build) |
+| a1 | A conflicted update is detectable by the sync guard | ✅ `scripts/test-rendered.sh` |
+| a2 | `cliff.toml` actually renders | ✅ found a real bug — see below |
+| a3 | The generated `justfile` parses, and optional modules add their recipes | ✅ `scripts/test-rendered.sh` |
+| a4 | `devcontainer.json` validates | ➡ **moved to 7b item 1**: the devcontainer CLI needs a container runtime (`spawn docker ENOENT`), so it is not locally checkable here |
 
-a1 matters most: it is the mechanism behind the "repos that diverge get a failed sync, not a
-silent bad merge" guardrail, and today only the *wiring* is inspected, not the behaviour.
+**a1 corrected a claim in this document.** The original text said a diverged update "produces
+`.rej` files **and a failing exit**". It produces `.rej` files and exits **0**. Copier reports
+success, having taken the template's version of the file and dropped the human's edit, with the
+conflict recorded only in the `.rej`. That is precisely why the sync workflow needs an explicit
+`find . -name '*.rej'` step: the exit code carries no signal at all. The suite now asserts that
+signal, and asserts it is *absent* before any template change so the guard cannot fire falsely.
+
+**a2 found a bug that would have broken every release.** The shipped `cliff.toml` rendered
+`{{ timestamp | date(...) }}` unconditionally. `timestamp` is only populated for a *tagged*
+release, so the Unreleased section failed the whole run with `Filter call 'date' failed` — and
+`just changelog` renders the full changelog, so that recipe was broken. `release.yml` would have
+failed too, or produced nothing, on the first real tag. Fixed by adopting git-cliff's documented
+`{% if version %}` guard, with both modes now asserted: the full changelog and `--current`.
+
+This is the argument for 7a existing: two of the four claims were wrong when written down, and
+neither was visible by reading the files.
 
 ---
 
@@ -233,9 +244,9 @@ Confirm the first scheduled run uploads SARIF and that Pinned-Dependencies is sa
 
 ---
 
-## 5. Two defects Phase 7 will hit, already identified
+## 5. Two defects found by planning, and fixed
 
-### 5.1 Auto-merge with no required checks merges immediately
+### 5.1 Auto-merge with no required checks merges immediately — **resolved by documentation**
 
 `settings.yml` sets:
 
@@ -249,23 +260,43 @@ met. With no required checks and `module_contributing` off (0 required approvals
 "merge without looking".
 
 The template cannot name the check itself: it depends on the shared workflow's job names,
-which live in another repository. Options:
+which live in another repository.
 
-1. Leave it, and document that `required_status_checks` must be filled in before enabling
-   auto-merge. Cheapest, and keeps the template free of knowledge it cannot have.
-2. Add a questionnaire field for the required check name, defaulted to empty.
+**Resolution:** auto-merge stays opt-in and off by default, so the safe path is the default
+path, and the prerequisite is now stated in the workflow itself as well as here (P7 and
+item 7). A questionnaire field was rejected: a wrong check name blocks every pull request
+forever on a check that never reports.
 
-**Until this is decided, P5 must set `COPIER_SYNC_AUTO_MERGE=false`.** Item 7 cannot pass.
+A runtime guard was also considered and rejected: reading branch protection needs admin or a
+fine-grained Administration permission that `COPIER_SYNC_TOKEN` may not have, so the guard
+would itself be an untested failure mode. If it is added later, it must be verified against a
+real token first.
 
-### 5.2 `publish_results: true` on a private repository
+**Until required checks exist, keep `COPIER_SYNC_AUTO_MERGE=false`.**
 
-`scorecard.yml` hardcodes `publish_results: true`. Scorecard publishes to the OpenSSF API,
-which only accepts public repositories; on a private one the job fails rather than degrading.
+### 5.2 Scorecard on a private repository — **fixed, and the original claim was wrong**
 
-The `security` module's condition is "public / external users", so this is *arguably*
-consistent — but a private repository that enables `security` gets a failing job with a
-non-obvious cause. Either make `publish_results` visibility-dependent, or state the
-restriction where the module is enabled.
+The first version of this document asserted that `publish_results: true` fails on private
+repositories. That was **not accurate**. The action README states private repositories are
+supported when the organisation has GitHub Advanced Security, and documents a different,
+real failure:
+
+> Additional permissions for private repositories … Without them you may see errors like
+> `Resource not accessible by integration` (e.g., during GraphQL ListCommits)
+
+The job was missing exactly those reads. It is also worth recording that this workflow is
+subject to the OpenSSF API's publishing restrictions, which **fail the run** rather than
+warning when violated: no workflow-level env or defaults, no workflow-level write
+permissions, only the scorecard job may hold `id-token: write`, no job-level env or
+containers, an Ubuntu runner, and only five approved actions in that job.
+
+The template already satisfied those restrictions — the earlier zizmor fix that reduced
+workflow-level permissions to `{}` is what made it compliant — but nothing said so, so an
+innocent extra step in that job would have broken publishing with a confusing error.
+
+**Fix applied:** added `issues: read`, `pull-requests: read` and `checks: read`; made
+`publish_results` visibility-dependent so a private repository analyses and uploads SARIF
+without publishing to a public dataset; and documented the restrictions in the workflow.
 
 ---
 
