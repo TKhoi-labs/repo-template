@@ -22,13 +22,18 @@ test-matrix:
 test-rendered:
     scripts/test-rendered.sh
 
+# Verify the docs: run the README's own commands, and check its tables against
+# copier.yml so a documented answer cannot go stale.
+test-docs:
+    scripts/test-docs.sh
+
 # Run every check on the template itself.
-test: test-template test-health test-matrix test-rendered
+test: test-template test-health test-matrix test-rendered test-docs
 
 # Lint this template repo.
 lint:
     yamllint copier.yml
-    shellcheck scripts/test-template.sh scripts/test-health.sh scripts/test-matrix.sh scripts/test-rendered.sh scripts/lib/template-snapshot.sh
+    shellcheck scripts/test-template.sh scripts/test-health.sh scripts/test-matrix.sh scripts/test-rendered.sh scripts/test-docs.sh scripts/lib/template-snapshot.sh
 
 # Remove generated artifacts.
 clean:
