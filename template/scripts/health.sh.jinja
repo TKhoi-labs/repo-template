@@ -1,3 +1,166 @@
 #!/usr/bin/env bash
-# TEMPLATE-STUB: not yet authored. Replace this file.
+# Repository health — the four-state module manifest.
+#
+# Three sources, one report:
+#   1. .copier-answers.yml                  which modules are enabled
+#   2. the file lists below                 whether an enabled module is finished
+#   3. docs/adr/0001-initial-deferrals.md   why a disabled module is disabled
+#
+# This script is read-only: it never writes to the repository, and it has no
+# runtime dependencies beyond grep and coreutils.
+#
+# Exit codes:
+#   0  every module is complete or has a recorded decision
+#   2  an enabled module is unfinished, and nothing is undecided
+#   1  a module is undecided, or the manifest is missing
 set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+ANSWERS=".copier-answers.yml"
+DEFERRALS="docs/adr/0001-initial-deferrals.md"
+# The stub marker. Assembled from two pieces so that this file does not match
+# its own search: a script that reports itself as a stub can never be complete.
+SENTINEL="TEMPLATE-""STUB"
+
+# core is not a question: it is always present.
+MODULES="core commits ci deps docs contributing env security release ops"
+
+if [ ! -f "$ANSWERS" ]; then
+  printf 'health: %s not found.\n' "$ANSWERS" >&2
+  printf 'health: it is the module manifest; without it there is nothing to check.\n' >&2
+  exit 1
+fi
+
+enabled() {
+  [ "$1" = "core" ] && return 0
+  grep -Eq "^[[:space:]]*module_$1:[[:space:]]*true[[:space:]]*$" "$ANSWERS"
+}
+
+# Files owned by each module. Only consulted for modules that are enabled, so
+# a list may safely name files that do not exist in this repository.
+module_files() {
+  case "$1" in
+    core)
+      printf '%s\n' README.md justfile lefthook.yml \
+        .editorconfig .gitignore .gitattributes \
+        .github/settings.yml .github/pull_request_template.md \
+        .github/ISSUE_TEMPLATE/bug.yml .github/ISSUE_TEMPLATE/task.yml \
+        .github/ISSUE_TEMPLATE/feature.yml .github/ISSUE_TEMPLATE/config.yml \
+        .github/workflows/copier-sync.yml \
+        docs/adr/0000-template.md docs/adr/0001-initial-deferrals.md{% if license != 'None' %} LICENSE{% endif %}
+      ;;
+    commits)
+      printf '%s\n' .commitlintrc.json .github/workflows/commitlint.yml
+      ;;
+    ci)
+      printf '%s\n' .github/workflows/ci.yml
+      ;;
+    deps)
+      printf '%s\n' renovate.json .github/workflows/dependency-review.yml
+      ;;
+    docs)
+      printf '%s\n' docs/architecture.md docs/adr/README.md
+      ;;
+    contributing)
+      printf '%s\n' CONTRIBUTING.md .github/CODEOWNERS
+      ;;
+    env)
+      printf '%s\n' .devcontainer/devcontainer.json
+      ;;
+    security)
+      printf '%s\n' SECURITY.md .gitleaks.toml \
+        .github/workflows/scorecard.yml .github/workflows/gitleaks.yml
+      ;;
+    release)
+      printf '%s\n' cliff.toml .github/workflows/release.yml
+      ;;
+    ops)
+      printf '%s\n' docs/runbooks/README.md observability/README.md
+      ;;
+  esac
+}
+
+# Problem files for an enabled module: absent, or still carrying the sentinel.
+module_problems() {
+  local f
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    if [ ! -f "$f" ]; then
+      printf '%s (missing)\n' "$f"
+    elif grep -q "$SENTINEL" "$f" 2>/dev/null; then
+      printf '%s (stub)\n' "$f"
+    fi
+  done < <(module_files "$1")
+}
+
+adr_row() {
+  [ -f "$DEFERRALS" ] || return 0
+  grep -E "^\|[[:space:]]*\`$1\`[[:space:]]*\|" "$DEFERRALS" | head -n 1 || true
+}
+
+# A decision only counts when it names its trigger or its reason. A row that
+# says "deferred" without a trigger is an intention, not a decision.
+row_deferred() { printf '%s' "$1" | grep -Eq 'deferred.*trigger:[[:space:]]*[^ |]'; }
+row_declined() { printf '%s' "$1" | grep -Eq 'declined.*reason:[[:space:]]*[^ |]'; }
+row_is_todo() { printf '%s' "$1" | grep -q 'TODO'; }
+
+text_after() { printf '%s' "$2" | sed -e "s/.*$1:[[:space:]]*//" -e 's/[[:space:]]*|.*$//'; }
+
+complete=0
+incomplete=0
+deferred=0
+declined=0
+unrecorded=0
+
+printf 'Module health\n\n'
+printf '  ✅ complete   🟡 incomplete   ⏸ deferred   ⛔ declined   ❓ unrecorded\n'
+printf '  Decisions live in %s\n\n' "$DEFERRALS"
+
+for m in $MODULES; do
+  if enabled "$m"; then
+    problems="$(module_problems "$m")"
+    if [ -n "$problems" ]; then
+      count="$(printf '%s\n' "$problems" | wc -l | tr -d ' ')"
+      detail="on — incomplete: $(printf '%s\n' "$problems" | head -n 1)"
+      if [ "$count" -gt 1 ]; then
+        detail="$detail (+$((count - 1)) more)"
+      fi
+      printf '  🟡  %-12s %s\n' "$m" "$detail"
+      incomplete=$((incomplete + 1))
+    else
+      printf '  ✅  %-12s %s\n' "$m" "on — complete"
+      complete=$((complete + 1))
+    fi
+  else
+    row="$(adr_row "$m")"
+    if [ -z "$row" ] || row_is_todo "$row"; then
+      printf '  ❓  %-12s %s\n' "$m" \
+        "unrecorded — enable the module, or record a decision for it"
+      unrecorded=$((unrecorded + 1))
+    elif row_deferred "$row"; then
+      printf '  ⏸  %-12s %s\n' "$m" "deferred — $(text_after trigger "$row")"
+      deferred=$((deferred + 1))
+    elif row_declined "$row"; then
+      printf '  ⛔  %-12s %s\n' "$m" "declined — $(text_after reason "$row")"
+      declined=$((declined + 1))
+    else
+      printf '  ❓  %-12s %s\n' "$m" \
+        "unrecorded — row names neither 'trigger:' nor 'reason:'"
+      unrecorded=$((unrecorded + 1))
+    fi
+  fi
+done
+
+printf '\n%d complete, %d incomplete, %d deferred, %d declined, %d unrecorded\n' \
+  "$complete" "$incomplete" "$deferred" "$declined" "$unrecorded"
+
+if [ "$unrecorded" -gt 0 ]; then
+  printf 'health: %d module(s) undecided.\n' "$unrecorded" >&2
+  exit 1
+fi
+if [ "$incomplete" -gt 0 ]; then
+  printf 'health: %d module(s) unfinished.\n' "$incomplete" >&2
+  exit 2
+fi
+exit 0

@@ -37,6 +37,17 @@ reason). A module that is off and unrecorded is not a decision; it is an omissio
 {% for name, condition in off -%}
 | `{{ name }}` | {{ condition }} | TODO: deferred (trigger: ...) or declined (reason: ...) |
 {% endfor %}
+
+Resolve each row using one of these exact forms, so `just health` can classify it. Both
+keywords are lowercase, and the value after them is required:
+
+```text
+| `<module>` | <condition> | deferred — trigger: <what has to happen first> |
+| `<module>` | <condition> | declined — reason: <why this is not wanted> |
+```
+
+A row that says `deferred` without naming a trigger is an intention, not a decision, and
+`just health` reports it as unrecorded.
 {%- else -%}
 All modules were enabled at generation time. Nothing is deferred or declined.
 {%- endif %}
