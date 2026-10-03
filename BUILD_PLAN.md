@@ -302,8 +302,9 @@ Consequences for `copier.yml`:
 - New questions `org_slug` (e.g. `acme`) and `workflow_ref` (a **tag**, default `v1`).
 - The central repo is a prerequisite of the `ci` module, not of this build: the `ci`
   module's ADR records it as an external dependency with a trigger if it does not exist yet.
-- `workflow_ref` is pinned to a tag, never `main`, for the same reason the sync job is
-  pinned — an unpinned `uses:` turns every fleet repo into a live beta channel.
+- `workflow_ref` is pinned to a **full commit SHA**, never a tag or branch (`copier.yml`
+  validators enforce the shape). A tag would let a moved ref repoint the workflow that every
+  repository executes; see §11 and ADR-0009 for the evidence and the accepted cost.
 - `template-test` runs with `run_bootstrap=false` and a fixture `org_slug`, so callers are
   rendered and `actionlint`-checked without needing the central repo to exist.
 
@@ -455,7 +456,7 @@ dependency pairs are covered by the closure configs. That is the deliberate trad
 | # | Decision | Resolution | Consequence locked in |
 | :-- | :--- | :--- | :--- |
 | 1 | Template layout | **`template/` subdirectory** | `_subdirectory: template`; this repo's CI/BUILD_PLAN can never leak (§6.1) |
-| 2 | Reusable-workflow home | **org `.github` repo** | New questions `org_slug`, `workflow_ref`; `uses: …@<tag>` (§6.5) |
+| 2 | Reusable-workflow home | **org `.github` repo** | Questions `org_slug` + `workflow_ref`; `uses: …@<sha>` (ADR-0009), validator-enforced (§6.5, §11) |
 | 3 | ADR tooling | **`adr-tools`** | `0000-template.md` is `adr new`-compatible; `0001` is Copier-rendered (§6.6) |
 | 4 | Release tool | **`git-cliff`** | `cliff.toml` + `just changelog`; no `release-please-config.json` (§6.7) |
 | 5 | Env module flavor | **devcontainer** (assumed) | `.devcontainer/devcontainer.json` owns `yq`, `just`, `adr-tools`, `git-cliff` |
@@ -542,3 +543,88 @@ sentinel model cannot express). `just health` depends only on `yq` + `grep`. `al
 rejected for now on maturity grounds, not capability, and stays a named option if a linter is
 ever warranted.
 
+
+---
+
+## 11. Deep analysis — pinning the reusable-workflow caller
+
+**Question.** `ci.yml` is now the only `uses:` in the template that is not a commit SHA. ADR-0009
+says tags are mutable and therefore unacceptable; decision 2 says the reusable workflow is
+pinned to a tag. One of them is wrong.
+
+### 11.1 Does anything actually measure or enforce this?
+
+| Check | Finding | Source |
+| :--- | :--- | :--- |
+| Scorecard `Pinned-Dependencies` | **Yes, since 2025-06-30.** Issue #2174 reported a tag-pinned reusable workflow scoring 10/10; the maintainer confirmed "we assume every reference to an action will be as a step". PR #4681, *"include workflow uses when checking for unpinned dependencies"*, merged 2025-06-30, release note: "Check for unpinned dependencies in workflow jobs." | `ossf/scorecard` #2174, #4681 |
+| GitHub allowed-actions policy | **Hard failure.** Since Aug 2025 the policy for "allowed actions and reusable workflows" has a SHA-pinning checkbox: "The policy will check for a full commit SHA, and any workflow that attempts to use an action that isn't pinned will fail." | GitHub changelog 2025-08-15 |
+| GitHub docs | Guidance is framed as *"Using third-party actions"* and *"Reusing third-party workflows"*. It also warns: "there is risk to this approach even if you trust the author, because a tag can be moved or deleted if a bad actor gains access to the repository storing the action." | Secure use reference |
+
+So the earlier premise was right, but only recently: before mid-2025 a tag-pinned reusable
+workflow was **invisible** to Scorecard. A repo running an older Scorecard gets no signal at all.
+
+Unverified: whether the org policy exempts same-org refs. That must be checked against the
+actual org setting before relying on it either way.
+
+### 11.2 The threat model is genuinely weaker for a first-party ref
+
+GitHub's guidance is explicitly about third parties. For `org/.github`, the people who can move
+`v1` are the org's maintainers, who can already push to every repository directly. SHA pinning
+therefore does **not** defend against a malicious maintainer. It defends a narrower case: an
+account compromised with write access to only the shared repo, or a malicious PR merged into the
+shared repo by someone without per-repo access. That is real, but smaller than for a third-party
+action. This is a legitimate argument for keeping the tag.
+
+### 11.3 The strongest argument for a SHA — direction of failure
+
+- **Tag:** if `v1` is moved to malicious code, **every** repository is compromised at job start,
+  with no PR, no diff, and no review in any consuming repo. Nothing in this system can stop it;
+  that is the one change path with no review anywhere.
+- **SHA:** the same compromise is a **non-event** for every pinned repo. The bad commit is never
+  used. Remediation is N reviewable PRs.
+
+This is what GitHub means by "prevent malicious code added to a new or updated branch or tag
+from being automatically used". It is also the only choice consistent with this architecture's
+own premise: that change should flow through reviewable PRs.
+
+### 11.4 The maintenance cost is close to zero
+
+| Concern | Reality |
+| :--- | :--- |
+| "Hashes are unmaintainable by hand" | Renovate's `github-actions` manager has a `workflow` depType — "a reusable workflow referenced in a job-level `uses:` field" — so `helpers:pinGitHubActionDigests` already updates it. Dependabot has supported reusable workflows since 2023 and updates `@<sha> # <tag>` forms. |
+| "Fleet rollout becomes N PRs" | True, and equally true for the tag: `copier update --defaults` does not re-ask questions, so a changed `workflow_ref` default does not propagate by itself. Either choice needs a `_migrations` entry plus the sync PR the plan already budgets for. |
+| "Emergency fixes get slower" | Real, and it is the point. With a tag, "instant fleet-wide fix" and "instant fleet-wide exploit" are the same mechanism. They cannot be separated. |
+
+### 11.5 The option that removes the problem instead of managing it
+
+Because Copier already propagates files, the cross-repo reference is **optional**: render the
+workflow body into each repository, either as the full `ci.yml` body or as a local reusable
+workflow (`./.github/workflows/ci-shared.yml`).
+
+- No cross-repo `uses:` ⇒ no pinning question, no Scorecard finding, no org-policy conflict.
+- The `ci` module stops depending on an org `.github` repo that may not exist yet.
+- Propagation uses the mechanism already built: the sync PR.
+- Costs: a repository can edit its own CI (weaker central control); repos lagging their template
+  version run older CI; upgrading CI costs N sync PRs, the same as SHA pinning.
+
+Worth noting: the source design justified reusable workflows as "the root-cause fix for template
+churn". That rationale predates having a working update path. Copier *is* the churn fix now, so a
+shared reusable workflow buys central control and immediate consistency, not churn resistance.
+
+### 11.6 Recommendation
+
+**Pin to a commit SHA, enforced by a validator on `workflow_ref`.** Scorecard measures it, GitHub
+can hard-fail it, tooling maintains it automatically, and it matches the architecture's premise
+that change is reviewable. The weakened first-party threat model is a fair argument for the tag;
+it is not an argument that the tooling makes expensive.
+
+If the org does not enable SHA-pinning policy and accepts a `Pinned-Dependencies` finding, keeping
+the tag is defensible — **but then ADR-0009 must record the exception explicitly**, because an
+unexplained inconsistency is exactly the kind of thing this system exists to prevent.
+
+**Status: DECIDED — pin to a commit SHA.** Scorecard measures it, GitHub can hard-fail it,
+tooling maintains it automatically, and it matches the architecture's premise that change is
+reviewable. Implemented as validators on `workflow_ref` and `module_ci`, so a tag cannot be
+entered at generation time. ADR-0009 now covers job-level `uses:` explicitly, including the
+first-party caveat and the accepted cost that a shared-workflow fix needs a migration plus sync
+PRs. This supersedes the "pin to a tag" wording in decision 2.
