@@ -197,6 +197,12 @@ expect_contains "$BUILD/core-only/.github/ISSUE_TEMPLATE/config.yml" "blank_issu
 expect_contains "$BUILD/core-only/.github/settings.yml" "required_approving_review_count: 0"
 expect_contains "$BUILD/all-on/.github/settings.yml" "required_approving_review_count: 2"
 expect_contains "$BUILD/all-on/.github/settings.yml" "no merge without review"
+# The required check must follow the ci module: with it on, the shared workflow's
+# "ci / ci" is required; with it off nothing produces a check, and requiring one
+# anyway would block every merge.
+expect_contains "$BUILD/all-on/.github/settings.yml" "- ci / ci"
+expect_contains "$BUILD/core-only/.github/settings.yml" "required_status_checks: null"
+expect_contains "$BUILD/all-on/.github/settings.yml" "the app applies \`repository:\` and \`labels:\` but NOT"
 
 # commits and security contribute only to the core-owned hook file
 expect_contains "$BUILD/core-only/lefthook.yml" "pre-push:"

@@ -188,6 +188,29 @@ runs `copier update`, and opens or updates a pull request on `chore/copier-sync`
 | Required status checks configured | `COPIER_SYNC_AUTO_MERGE=true` means *merge when checks pass*; with no required checks it means **merge immediately** |
 | Repository variables `COPIER_SYNC_ENABLED`, `COPIER_SYNC_AUTO_MERGE`, `GHAS_ENABLED` | see the runbook |
 
+### Branch protection is applied by hand
+
+`.github/settings.yml` declares its protection block, and the Settings app does **not** currently
+apply it ([runbook §5.10](docs/validation-runbook.md)) — nothing reports that. Apply it from the
+file's values until that changes, substituting the check name if your organisation renamed the
+shared workflow:
+
+```bash
+gh api -X PUT repos/<owner>/<repo>/branches/main/protection --input - <<'JSON'
+{
+  "required_pull_request_reviews": {"required_approving_review_count": 2, "dismiss_stale_reviews": true},
+  "required_status_checks": {"strict": false, "contexts": ["ci / ci"]},
+  "enforce_admins": false,
+  "restrictions": null
+}
+JSON
+```
+
+The check name is `"<workflow> / <job>"` from the shared reusable workflow, which uses `ci` for
+both (`ci / ci`). Requiring a check that never reports blocks every pull request, so if you disable
+the `ci` module, set `required_status_checks` to `null` instead — which is what the template
+generates in that case.
+
 Set `COPIER_SYNC_ENABLED=false` to pause scheduled syncs for a repository. A manual
 `workflow_dispatch` still runs, so a paused repository can still be synced deliberately.
 
