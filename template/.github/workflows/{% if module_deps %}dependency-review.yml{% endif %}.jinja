@@ -2,6 +2,19 @@
 # Dependency review is free on public repositories. On private ones it needs
 # GitHub Advanced Security; without that entitlement the action errors, so the
 # job skips instead of failing the build (ADR-0008).
+#
+# "Free" is not the same as "enabled". An organisation that has never applied
+# its security features to repositories fails this job with:
+#
+#   Dependency review is not supported on this repository. Please ensure that
+#   Dependency graph is enabled
+#
+# That message is misleading twice over: there is no Dependency graph toggle in
+# the organisation's settings, and a public repository has nothing to enable
+# locally. Applying the organisation's Advanced Security features to **all
+# repositories** is what fixes it, because the dependency graph arrives with
+# Dependabot. Verified: the same commit failed before the setting was applied
+# and passed after, with no change to this file.
 name: dependency-review
 
 on:
@@ -18,7 +31,8 @@ jobs:
   dependency-review:
     name: Review dependency changes
     runs-on: ubuntu-latest
-    # Public repositories always have it; private ones must opt in.
+    # Public repositories have the entitlement, but the organisation must have
+    # applied its security features to them; private ones must opt in here.
     if: ${{ !github.event.repository.private || vars.GHAS_ENABLED == 'true' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4

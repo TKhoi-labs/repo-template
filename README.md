@@ -80,7 +80,7 @@ you now own, permanently.
 | **core** | always | `justfile`, `scripts/health.sh`, `lefthook.yml`, `settings.yml`, issue forms, the deferrals ADR |
 | **commits** | you want enforced history | commitlint config + a `commitlint` workflow |
 | **ci** | any automated check at all | a thin caller of the org's shared workflow |
-| **deps** | the repo has any dependency | Renovate config + dependency review |
+| **deps** | the repo has any dependency | Renovate config + dependency review. **In an organisation**, dependency review also needs the org's Advanced Security features applied to repositories — see below |
 | **docs** | architecture exists | `docs/architecture.md` and an ADR index |
 | **contributing** | you accept outside contributions | `CONTRIBUTING.md`, `CODEOWNERS`, branch-protection hardening |
 | **env** | contributors need reproducibility | a devcontainer |
@@ -97,6 +97,21 @@ email). Without it the job fails on every push with *"`<org>` is an organization
 required."* The key is free, but it is validated by a third-party service which receives the
 repository name and owner — no code leaves GitHub. Note the split: the **action** is
 commercially licensed, while the **gitleaks CLI** is MIT.
+
+**In an organisation, dependency review also needs the org's security features enabled.**
+Free for public repositories is not the same as switched on. In the organisation's **Advanced
+Security → Global settings**, apply Secret scanning, Code scanning and Dependabot to **All
+repositories**. Until that is done the job fails with a message that names a setting you cannot
+find:
+
+```text
+Dependency review is not supported on this repository.
+Please ensure that Dependency graph is enabled
+```
+
+There is no *Dependency graph* toggle anywhere in the UI, and a public repository has nothing to
+enable locally — the graph arrives with Dependabot, which is why applying the features org-wide
+is the fix.
 | **release** | you publish a versioned artifact | `cliff.toml`, a release workflow *(requires `ci`)* |
 | **ops** | the repo is deployed or running | runbooks, observability config *(requires `ci`)* |
 

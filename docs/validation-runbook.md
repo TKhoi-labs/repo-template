@@ -431,7 +431,7 @@ Remaining prerequisite, documented in the README: an organisation must request t
 set it as an organisation secret. Worth stating for a module about secrets: the key is validated
 by a third-party service which receives the repository name and owner. No code leaves GitHub.
 
-### 5.6 `dependency-review` fails on a fresh organisation — **OPEN**
+### 5.6 `dependency-review` fails on a fresh organisation — **resolved: an org prerequisite, not a defect in the guard**
 
 The workflow's guard is:
 
@@ -446,16 +446,37 @@ with the comment *"Public repositories always have it"*. That is wrong. The run 
 Please ensure that Dependency graph is enabled
 ```
 
-Root cause, read from the organisation object:
+**Three explanations looked convincing and all three were wrong.** The isolation is worth
+recording, because the second one *appeared* to succeed:
 
-```text
-dependency_graph_enabled_for_new_repositories = False
-```
+| Hypothesis | Test | Result |
+| :--- | :--- | :--- |
+| `dependency_graph_enabled_for_new_repositories = False` is the gate | set it `true`, then create a **new** repository with a manifest and run the job | **still failed**, identical message |
+| the action pin is stale (`v4` branch head vs `v5.0.0`) | bump the pin to `v5.0.0` | **passed** |
+| …so the pin was the cause? | revert to the original pin, same pull request | **still passed** |
 
-New organisations disable the dependency graph for new repositories. Being public is not
-sufficient, and adding a dependency manifest does not help — the setting is the gate, and
-`security_and_analysis` does not report `dependency_graph` for a public repository at all, so
-it cannot be enabled per repository through the API.
+The two passing runs bracket the org settings being saved. The pin bump passed for a reason
+that had nothing to do with the pin — reverting it is what proved that, and it is the reason
+the first passing run was not treated as the answer.
+
+**What actually fixed it:** applying the organisation's **Advanced Security features to *all*
+repositories** (Secret scanning, Code scanning, Dependabot) on the org's settings page. Confirmed
+independently afterwards: `/dependency-graph/sbom` returned `404` for every probe before the
+change and returns SPDX data after it, and each repository's `security_and_analysis` went from
+`disabled` to `enabled`.
+
+The action's error names a setting that **does not exist**. There is no *Dependency graph* toggle
+anywhere in the organisation UI — only Dependabot, Code scanning, Secret scanning and "Grant
+Dependabot access to repositories". The dependency graph arrives *with* Dependabot, which is why
+applying the features org-wide is what enables it.
+
+**Resolution: documentation and an accurate comment, not code.** The guard itself was correct;
+only its comment ("Public repositories always have it") was wrong, and that misstatement is what
+sent this investigation after the dependency graph instead of the org settings. The workflow now
+names the prerequisite, and the README states it.
+
+The variable-guard option above is therefore unnecessary. It stays available for an operator who
+would rather have a visible skip than a confusing failure.
 
 | Option | Effect |
 | :--- | :--- |
