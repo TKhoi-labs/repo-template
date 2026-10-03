@@ -21,6 +21,32 @@ bad() { printf '  FAIL  %s\n' "$1"; fail=$((fail + 1)); }
 
 expect_file() { [ -f "$1" ] && ok "exists  ${1#"$BUILD"/}" || bad "missing ${1#"$BUILD"/}"; }
 expect_absent() { [ ! -e "$1" ] && ok "absent  ${1#"$BUILD"/}" || bad "present ${1#"$BUILD"/}"; }
+expect_contains() {
+  if grep -q -- "$2" "$1" 2>/dev/null; then
+    ok "$(basename "$1") contains: $2"
+  else
+    bad "$(basename "$1") missing: $2"
+  fi
+}
+
+# Assert exactly which files in a rendered repo are still stubs. Anything not
+# listed must have been authored, so a forgotten file cannot pass by rendering
+# as a placeholder.
+expect_stub_set() {
+  local dir="$1"
+  shift
+  local expected actual
+  expected="$(printf '%s\n' "$@" | sort)"
+  actual="$(grep -rl 'TEMPLATE-STUB' "$dir" 2>/dev/null | sed "s#^$dir/##" | sort)"
+  if [ "$actual" = "$expected" ]; then
+    ok "stub set matches: $(printf '%s' "$expected" | tr '\n' ' ')"
+  else
+    bad "stub set mismatch"
+    printf '        expected: %s\n        actual:   %s\n' \
+      "$(printf '%s' "$expected" | tr '\n' ' ')" \
+      "$(printf '%s' "$actual" | tr '\n' ' ')"
+  fi
+}
 
 # render <name> [extra -d args...]
 render() {
@@ -109,6 +135,65 @@ for m in security release ops; do
   fi
   expect_absent "$BUILD/negative-$m"
 done
+
+# ---------------------------------------------------------------------------
+# 5. Core module content is authored, not stubbed
+# ---------------------------------------------------------------------------
+echo "== core content =="
+expect_stub_set "$BUILD/core-only" "README.md" "scripts/health.sh"
+expect_contains "$BUILD/core-only/LICENSE" "MIT License"
+expect_contains "$BUILD/core-only/justfile" "scripts/health.sh"
+expect_contains "$BUILD/core-only/lefthook.yml" "just health"
+expect_contains "$BUILD/core-only/.github/workflows/copier-sync.yml" "copier update --defaults"
+expect_contains "$BUILD/core-only/.github/ISSUE_TEMPLATE/bug.yml" "required: true"
+expect_contains "$BUILD/core-only/.github/ISSUE_TEMPLATE/config.yml" "blank_issues_enabled: false"
+
+# contributing contributes only to the core-owned settings file
+expect_contains "$BUILD/core-only/.github/settings.yml" "required_approving_review_count: 0"
+expect_contains "$BUILD/all-on/.github/settings.yml" "required_approving_review_count: 2"
+expect_contains "$BUILD/all-on/.github/settings.yml" "no merge without review"
+
+# commits and security contribute only to the core-owned hook file
+expect_contains "$BUILD/core-only/lefthook.yml" "pre-push:"
+expect_contains "$BUILD/all-on/lefthook.yml" "commitlint"
+expect_contains "$BUILD/all-on/lefthook.yml" "gitleaks"
+
+# ---------------------------------------------------------------------------
+# 6. License rendering
+# ---------------------------------------------------------------------------
+echo "== license =="
+render core-none "${off_args[@]}" -d license=None
+expect_absent "$BUILD/core-none/LICENSE"
+render core-prop "${off_args[@]}" -d license=Proprietary
+expect_contains "$BUILD/core-prop/LICENSE" "All rights reserved"
+expect_contains "$BUILD/core-prop/LICENSE" "Copyright (c) 2026"
+
+# ---------------------------------------------------------------------------
+# 7. Rendered output is lint-clean
+#
+# Jinja conditionals in YAML are where whitespace bugs hide: a stray blank
+# line at end of file is an error, and it is invisible in the template.
+# ---------------------------------------------------------------------------
+echo "== rendered lint =="
+YAMLLINT="${YAMLLINT:-}"
+if [ -z "$YAMLLINT" ]; then
+  if command -v yamllint >/dev/null 2>&1; then
+    YAMLLINT="yamllint"
+  elif command -v uvx >/dev/null 2>&1; then
+    YAMLLINT="uvx yamllint"
+  fi
+fi
+if [ -n "$YAMLLINT" ]; then
+  # shellcheck disable=SC2086
+  if $YAMLLINT -s "$BUILD/core-only" "$BUILD/all-on" >"$BUILD/yamllint.log" 2>&1; then
+    ok "yamllint clean on core-only and all-on"
+  else
+    bad "yamllint findings in rendered output"
+    sed 's/^/        /' "$BUILD/yamllint.log"
+  fi
+else
+  printf '  skip  yamllint unavailable (set YAMLLINT=... to enable)\n'
+fi
 
 # ---------------------------------------------------------------------------
 echo
