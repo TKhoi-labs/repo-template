@@ -178,3 +178,26 @@ codeowners_team:
     (for example "@acme/maintainers").
   default: "@{{ org_slug }}/maintainers"
   when: "{{ module_contributing }}"
+
+# ---------------------------------------------------------------------------
+# Migrations
+#
+# `copier update --defaults` never re-asks a question, so a changed answer has to
+# be written into .copier-answers.yml explicitly. This is how a new shared
+# workflow SHA reaches repositories that already exist: changing a default here
+# would do nothing for them (ADR-0009).
+#
+# `before:` runs before rendering, which is what makes the new value visible to
+# .github/workflows/ci.yml in the same update. Entries are plain command
+# strings, never mappings. The mechanism is verified in scripts/test-matrix.sh.
+# ---------------------------------------------------------------------------
+
+_migrations:
+  # Roll the org shared-workflow pin forward. The replacement applies whatever
+  # the previous value was: an org has one shared workflow, so every repository
+  # should record the same SHA after this runs.
+  - version: v0.3.0
+    before:
+      - >-
+        sed -i "s|^workflow_ref:.*|workflow_ref:
+        a58db51b34c18a01397838acdd4e9d6ac93f5f32|" .copier-answers.yml
