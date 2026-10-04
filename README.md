@@ -13,7 +13,7 @@ still a stub, and a workflow opens a pull request when the template changes.
 
 | | |
 | :--- | :--- |
-| Version | `v0.5.2` |
+| Version | `v0.5.3` |
 | Local checks | `just test` — six suites, see [Working on this template](#working-on-this-template) |
 | Adapts to the account | renders for an **organisation** or a **personal account**; asserted for both, since the shared workflow, the CODEOWNERS owner and the security features differ |
 | Can be left | `just eject` in a generated repository detaches it: no sync, no module tracking, nothing generated any more |
@@ -293,13 +293,28 @@ CI runs the same suites on every push and pull request
 them — plus a separate job that builds the devcontainer and verifies its toolchain, the one
 thing that cannot be checked locally without a container runtime.
 
+**The pins are kept fresh by Renovate.** `renovate.json` covers the action pins in this repository
+*and* in the payload's `.jinja` workflows — which the built-in manager cannot read, so those are
+the pins Renovate would otherwise never have seen — plus the CLI versions inside `pipx install`
+and `go install` command strings. It does its work once the
+[Renovate app](https://github.com/apps/renovate) is installed on the organisation; until then the
+configuration is inert.
+
+A read-only lookup on 2026-10-04, before that config existed, found **four of the seven action pins
+behind their newest major**: `actions/checkout` v4→v7, `peter-evans/create-pull-request` v6→v8,
+`gitleaks/gitleaks-action` v2→v3, and `actions/dependency-review-action` v4→v5. Those are the pins
+every generated repository receives, so the cost of having no updater was never theoretical. When
+Renovate raises a pull request for a payload pin, the change reaches consumers through a sync, so
+reviewing it means reviewing what a generated repository will run — `test-rendered` lints the
+rendered workflows, which catches structure and security findings but not changed behaviour.
+
 Rendering in the suites runs from a tagged snapshot of the working tree, so the tests see
 uncommitted work and are not affected by tags placed on this repository.
 
 **After merging a change, tag it** — otherwise no generated repository receives it:
 
 ```bash
-git tag -a v0.5.2 -m "..." && git push --follow-tags
+git tag -a v0.5.3 -m "..." && git push --follow-tags
 ```
 
 Bump the `Version` row at the top of this README in the same commit. `test-docs` asserts that it
