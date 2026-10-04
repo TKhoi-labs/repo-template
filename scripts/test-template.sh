@@ -186,9 +186,9 @@ expect_contains "$BUILD/all-on/.devcontainer/devcontainer.json" "devcontainers/b
 expect_contains "$BUILD/all-on/.github/CODEOWNERS" "@example/maintainers"
 expect_contains "$BUILD/all-on/CONTRIBUTING.md" "Conventional Commits"
 expect_contains "$BUILD/all-on/SECURITY.md" "private vulnerability reporting"
-# The module states that code scanning is owned by the organisation; ADR-0010
-# explains why the template ships no CodeQL workflow.
-expect_contains "$BUILD/all-on/SECURITY.md" "Code scanning is owned by the organisation"
+# The module states that code scanning is account-owned, not repository-owned;
+# ADR-0010 explains why the template ships no CodeQL workflow.
+expect_contains "$BUILD/all-on/SECURITY.md" "Code scanning is not managed by this repository"
 expect_contains "$BUILD/all-on/docs/architecture.md" "Repository state"
 expect_contains "$BUILD/all-on/docs/adr/README.md" "deferrals"
 # Tera syntax in cliff.toml must survive Copier untouched. `trim_start_matches`

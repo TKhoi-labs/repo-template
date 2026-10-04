@@ -450,8 +450,10 @@ request, because GitHub cannot resolve the owner at all.
 who must satisfy it will read it, and points out that an owner which does not exist is worse
 than none — the file is *invalid* rather than advisory.
 
-Still open as a design question: whether the default should remain a team (a guess that may
-not exist) or become the organisation handle, which is always a valid CODEOWNERS owner.
+**Correction, verified against GitHub's CODEOWNERS syntax:** the organisation handle is **not**
+a valid owner on its own. An entry must be a user (`@username`) or a team (`@org/team-name`),
+so the "organisation handle" option is off the table. The team default stands for organisations;
+a personal account has no teams, and the payload now says to name the user instead.
 
 ### 5.5 `gitleaks` requires a licence for organisations — **resolved: take the free key**
 

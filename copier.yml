@@ -170,12 +170,13 @@ module_ops:
     module_ops requires module_ci: deploy pipelines are CI jobs.
     {% endif %}
 
-# CODEOWNERS cannot be derived: it needs a real GitHub team.
+# CODEOWNERS cannot be derived: it needs a real owner with write access.
 codeowners_team:
   type: str
   help: >-
-    GitHub team that owns this repository, in CODEOWNERS form
-    (for example "@acme/maintainers").
+    Owner for .github/CODEOWNERS: a team that is visible and has write
+    access ("@acme/maintainers"), or a single user ("@alice"). A personal
+    account has no teams, so use "@<username>".
   default: "@{{ org_slug }}/maintainers"
   when: "{{ module_contributing }}"
 

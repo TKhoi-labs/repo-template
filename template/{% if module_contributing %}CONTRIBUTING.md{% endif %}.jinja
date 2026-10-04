@@ -46,9 +46,11 @@ repository, and it must have write access. Until then, GitHub reports the reposi
 a broken CODEOWNERS file, and a branch protection rule requiring code owner review can block
 every pull request.
 
-If you are not ready to maintain a team, point CODEOWNERS at the organisation itself
-(the `@<org>` handle is always a valid owner) or delete the file. An owner that does not exist
-is worse than no owner, because it makes the file invalid rather than merely advisory.
+An owner must be a user with write access (`@username`) or a visible team with write access
+(`@org/team-name`); an organisation handle on its own is not a valid owner. On a personal
+account there are no teams, so name the account's user. If you are not ready to name an owner,
+delete the file: an owner that does not exist is worse than no owner, because it makes the file
+invalid rather than merely advisory.
 
 ## Generated files
 

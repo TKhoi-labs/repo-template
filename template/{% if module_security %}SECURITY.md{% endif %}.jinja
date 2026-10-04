@@ -25,11 +25,11 @@ has.
 
 This repository runs gitleaks on every push and pull request.
 
-**Code scanning is owned by the organisation, not by this repository.** CodeQL's default setup is
-a repository setting that organisation administrators control, so it is either enabled centrally
-or not at all — a repository cannot turn it on by itself.
+**Code scanning is not managed by this repository.** CodeQL's default setup is controlled by the
+account that owns the repository — organisation-wide for an organisation, per repository for a
+personal account — so a repository cannot turn it on by itself.
 
-If code scanning should be enabled and is not, ask an organisation administrator. Do **not** add
-a CodeQL workflow to fix it: when organisation default setup is active, GitHub disables such a
-workflow without failing, so the file would sit in the repository looking correct while doing
-nothing.
+If code scanning should be enabled and is not, ask whoever administers the owning account (on a
+personal account, that is you). Do **not** add a CodeQL workflow to fix it: when default setup is
+active, GitHub disables such a workflow without failing, so the file would sit in the repository
+looking correct while doing nothing.
