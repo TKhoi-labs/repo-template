@@ -2,7 +2,7 @@
 # `just health` is the single entry point for repository state.
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
-# Report the four-state module manifest.
+# Report the five-state module manifest.
 health:
     scripts/health.sh
 

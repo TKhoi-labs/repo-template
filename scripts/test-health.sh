@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Template-only tooling. Exercises scripts/health.sh against the five states.
 #
-# The four-state model is the forcing function that keeps ADR-0001 honest, so
+# The five-state model is the forcing function that keeps ADR-0001 honest, so
 # it is tested directly rather than inferred from a rendered repository.
 #
 # shellcheck disable=SC2016  # fixture rows contain Markdown `code spans`; those

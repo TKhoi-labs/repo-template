@@ -208,7 +208,7 @@ for m in $MODULES; do args+=(-d "module_$m=false"); done
 $COPIER copy --defaults "${args[@]}" "$CONFSRC" "$CONFDST" >/dev/null 2>&1
 
 # A human hand-edits a generated file, against the rule.
-sed -i 's/^# Report the four-state module manifest\.$/# Hand-edited by a human./' \
+sed -i 's/^# Report the five-state module manifest\.$/# Hand-edited by a human./' \
   "$CONFDST/justfile"
 (
   cd "$CONFDST"
@@ -226,7 +226,7 @@ else
 fi
 
 # The template now changes the same line, so the two edits collide.
-sed -i 's/^# Report the four-state module manifest\.$/# Report module health./' \
+sed -i 's/^# Report the five-state module manifest\.$/# Report module health./' \
   "$CONFSRC/template/justfile.jinja"
 (
   cd "$CONFSRC"

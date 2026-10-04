@@ -43,7 +43,7 @@ repo-template/
 ├── copier.yml                    the questionnaire (10 modules + identity)
 ├── template/                     ── THE PAYLOAD. Everything here is rendered.
 │   ├── justfile.jinja            core owns it; other modules contribute recipes
-│   ├── scripts/health.sh.jinja   core — the four-state report
+│   ├── scripts/health.sh.jinja   core — the five-state report
 │   ├── .github/
 │   │   ├── settings.yml.jinja    core
 │   │   └── workflows/

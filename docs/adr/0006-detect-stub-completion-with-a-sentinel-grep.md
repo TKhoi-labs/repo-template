@@ -34,7 +34,7 @@ We will implement stub detection as a **sentinel grep inside the committed
 `TEMPLATE-STUB`; otherwise it is *on — incomplete*.
 
 `repolinter` is **declined**, and `.repolinter.json` is not shipped. A linter remains an
-option as a *secondary* convention check, but nothing in the four-state model depends on one.
+option as a *secondary* convention check, but nothing in the five-state model depends on one.
 
 ## Consequences
 

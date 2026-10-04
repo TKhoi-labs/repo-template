@@ -8,7 +8,7 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 test-template:
     scripts/test-template.sh
 
-# Exercise the four-state health surface against its fixtures.
+# Exercise the five-state health surface against its fixtures.
 test-health:
     scripts/test-health.sh
 

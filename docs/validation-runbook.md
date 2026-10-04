@@ -5,7 +5,7 @@ GitHub organisation, and nothing that cannot. This document is the procedure for
 the remaining claims into verified ones.
 
 `just test` runs five suites, re-run by CI on every push: rendering, module gating, the DAG, file
-ownership, action pinning, the four-state health surface, `copier update` idempotency, answer
+ownership, action pinning, the five-state health surface, `copier update` idempotency, answer
 migration, workflow linting, the rendered-artifact guards in §1, and the documentation checks.
 
 ---
