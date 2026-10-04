@@ -13,7 +13,7 @@ still a stub, and a workflow opens a pull request when the template changes.
 
 | | |
 | :--- | :--- |
-| Version | `v0.3.3` |
+| Version | `v0.4.0` |
 | Local checks | `just test` — five suites, see [Working on this template](#working-on-this-template) |
 | Verified against a live org | **14 of 15 items fully verified**, with item 3 partly: the Settings app applies the repository feature block and the labels, but not `branches:` (§5.10). All on a free-plan org — see the execution record in [`docs/validation-runbook.md`](docs/validation-runbook.md) |
 
