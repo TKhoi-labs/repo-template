@@ -284,9 +284,10 @@ else
   bad "codeowners: no file rendered for a named owner"
 fi
 
-# copier update never re-asks a question, so the recorded answer is what decides
-# whether the file survives. The adopter clears it; the tree stays clean, because
-# an update applies its diff to committed state.
+# copier update never re-asks a question, so the recorded answer decides whether
+# the file is rendered — but Copier does not delete destination files, so a file
+# that stops being rendered stays until someone removes it. Measured, not read:
+# the control below turns a whole module off and its files survive too.
 sed -i "s|^codeowners_team:.*|codeowners_team: ''|" "$CW/.copier-answers.yml"
 (
   cd "$CW"
@@ -301,9 +302,29 @@ if [ "$rc" -ne 0 ]; then
   bad "codeowners: copier update exited $rc"
   tail -3 "$BUILD/update-codeowners.log" | sed 's/^/        /'
 elif [ -e "$CW/.github/CODEOWNERS" ]; then
-  bad "codeowners: update kept CODEOWNERS after the answer was cleared"
+  ok "codeowners: update leaves the file behind (Copier deletes nothing)"
 else
-  ok "codeowners: update removes the file once the answer is empty"
+  bad "codeowners: update deleted the file — the documented behaviour is now wrong"
+fi
+
+# The same mechanism, one level up: disabling a module does not withdraw its
+# files either. This is why the README says removing a generated file is manual.
+sed -i "s|^module_contributing:.*|module_contributing: false|" "$CW/.copier-answers.yml"
+(
+  cd "$CW"
+  git add -A
+  git -c user.email=test@example.invalid -c user.name=Tester commit -qm "module off"
+) >/dev/null 2>&1
+
+rc=0
+( cd "$CW" && $COPIER update --defaults --trust . ) >"$BUILD/update-module-off.log" 2>&1 || rc=$?
+if [ "$rc" -ne 0 ]; then
+  bad "module off: copier update exited $rc"
+  tail -3 "$BUILD/update-module-off.log" | sed 's/^/        /'
+elif [ -e "$CW/CONTRIBUTING.md" ] || [ -e "$CW/.github/CODEOWNERS" ]; then
+  ok "module off: files stay until removed by hand"
+else
+  bad "module off: files were deleted — the documented behaviour is now wrong"
 fi
 
 # ---------------------------------------------------------------------------

@@ -75,6 +75,10 @@ Files generated from the repository template are never hand-edited: the next tem
 would conflict with the edit. Keep customisations in files no module owns. A failed sync is
 the intended outcome when a repository has diverged.
 
+The sync never deletes files either. Turning a module off, or clearing an answer that used to
+generate a file, stops that file being rendered and leaves the existing one in place — remove
+it yourself, in the same commit.
+
 ## Decisions
 
 Significant decisions are recorded as ADRs in `docs/adr/`, including what each one defers and

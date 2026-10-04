@@ -211,7 +211,10 @@ expect_row contributing "✅" "codeowners: complete without the file"
 
 fixture coowner
 sed -i 's/^module_contributing: false/module_contributing: true/' "$BUILD/coowner/.copier-answers.yml"
-sed -i "s|^codeowners_team:.*|codeowners_team: '@example/maintainers'|" "$BUILD/coowner/.copier-answers.yml"
+# The key is absent when the module was off, and `sed s///` on a missing line is a
+# silent no-op, so delete then append rather than substitute.
+sed -i '/^codeowners_team:/d' "$BUILD/coowner/.copier-answers.yml"
+printf "codeowners_team: '@example/maintainers'\n" >>"$BUILD/coowner/.copier-answers.yml"
 printf '# Contributing\n\nHow to contribute.\n' >"$BUILD/coowner/CONTRIBUTING.md"
 decline_all "$BUILD/coowner"
 run_health "$BUILD/coowner"

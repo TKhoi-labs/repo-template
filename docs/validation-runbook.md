@@ -432,10 +432,10 @@ without `workflows` permission)
 and advanced only after one manual `copier update --defaults --trust`. The remedy documented in
 §5.3 is the remedy that was required.
 
-### 5.4 The generated CODEOWNERS was invalid — **fixed in `v0.2.1`**
+### 5.4 The generated CODEOWNERS was invalid — **fixed in `v0.2.1`, default removed in `v0.4.0`**
 
-`codeowners_team` defaults to `@<org>/maintainers`, and nothing creates that team. GitHub then
-reports the file as broken:
+`codeowners_team` used to default to `@<org>/maintainers`, and nothing creates that team.
+GitHub then reported the file as broken:
 
 ```text
 "kind":"Unknown owner","message":"Unknown owner on line 2: make sure the team
@@ -446,14 +446,44 @@ The requirement is stronger than "the team must exist": it must also be **visibl
 **write access**. A branch protection rule requiring code owner review then blocks every pull
 request, because GitHub cannot resolve the owner at all.
 
-**Fix applied:** the payload's `CONTRIBUTING.md` now states the requirement where the person
-who must satisfy it will read it, and points out that an owner which does not exist is worse
-than none — the file is *invalid* rather than advisory.
+**Fix applied in `v0.2.1`:** the payload's `CONTRIBUTING.md` states the requirement where the
+person who must satisfy it will read it, and points out that an owner which does not exist is
+worse than none — the file is *invalid* rather than advisory.
 
-**Correction, verified against GitHub's CODEOWNERS syntax:** the organisation handle is **not**
-a valid owner on its own. An entry must be a user (`@username`) or a team (`@org/team-name`),
-so the "organisation handle" option is off the table. The team default stands for organisations;
-a personal account has no teams, and the payload now says to name the user instead.
+**The org handle is not an owner.** Tested against GitHub's own validator on a live repository,
+rather than read from its syntax documentation as it was here first:
+
+| Owner | `GET /repos/{owner}/{repo}/codeowners/errors` |
+| :--- | :--- |
+| `@TKhoi-labs` — the organisation handle | `Unknown owner` |
+| `@TKhoi-labs/maintainers` — the old default | `Unknown owner` |
+| `@TanKhoiTV` — a user | **accepted** |
+| `@no-such-user-xyz9` — control | `Unknown owner` |
+| `@TKhoi-labs @TanKhoiTV` — mixed | `Unknown owner` |
+
+The organisation handle fails exactly like a user that does not exist, so "default it to the
+organisation" is not available.
+
+**Which leaves no valid default at all.** A valid owner is a team or a user with write access.
+For an organisation no default can be right — an org handle is not an owner and any named team
+may not exist — and for a personal account there are no teams, so `@<username>/maintainers`
+cannot resolve either. Nobody can be detected at generation time: `copier copy` asks questions,
+it does not call GitHub.
+
+**Fix for `v0.4.0`: `codeowners_team` defaults to empty, and empty generates no CODEOWNERS.**
+The file appears only when an owner is named, which is the one state that is correct for both
+account kinds, and it turns the module's own rule — an owner that does not exist is worse than
+no owner — into the default rather than advice. `scripts/health.sh` reads the answer and only
+then requires the file, so a repository generated with the default does not report itself
+incomplete.
+
+**Measured while implementing this: `copier update` never deletes files.** Clearing the owner
+stops the file being rendered and leaves the existing `.github/CODEOWNERS` in place; the same
+happens when a whole module is turned off, which was checked as a control. Copier's update path
+has no deletion step at all. So an adopter who clears the answer must delete the file by hand,
+which the README and the generated `CONTRIBUTING.md` both now say. Existing repositories are
+otherwise unaffected: `copier update` never re-asks, so every recorded answer stands, and no
+migration clears one — an adopter who created the team would have lost a working file.
 
 ### 5.5 `gitleaks` requires a licence for organisations — **resolved: take the free key**
 

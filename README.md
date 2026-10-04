@@ -47,9 +47,10 @@ minimal `workflow_call` workflow to start from.
 - Set `org_slug` to your username. `<you>/.github` fills the shared-workflow role, so `ci` still
   resolves; if you would rather not maintain one, turn `ci` off — which also turns off
   `security`, `release` and `ops`, because they are CI jobs.
-- With `contributing`, set `codeowners_team` to `@<username>`. A personal account has no teams,
-  so the default `@<org>/maintainers` cannot resolve, and GitHub rejects a CODEOWNERS file that
-  names an owner it cannot find.
+- `codeowners_team` can stay empty, and on a personal account it normally should: the default is
+  no owner, which generates no `.github/CODEOWNERS` at all. A valid owner is a team or a user — an
+  organisation handle on its own is not one, and a personal account has no teams — so nothing is
+  guessed. Naming yourself is legal but does no work: you cannot approve your own pull request.
 - Lower `required_approving_review_count` from `2`. You cannot approve your own pull request on
   a personal repository, so a rule asking for two approvals blocks every merge.
 - `deps`: dependency review is free on public repositories; a **private** personal repository
@@ -79,7 +80,7 @@ Copier asks for:
 | `copyright_holder` | who the LICENSE names; defaults to `org_slug`; skipped when `license` is `None` |
 | `license_year` | defaults to `2026`; skipped when `license` is `None` |
 | `module_commits`, `module_ci`, `module_deps`, `module_docs`, `module_contributing`, `module_env`, `module_security`, `module_release`, `module_ops` | the nine modules — see the table below |
-| `codeowners_team` | asked only when `contributing` is on |
+| `codeowners_team` | asked only when `contributing` is on; **empty by default**, and empty means no `.github/CODEOWNERS` is generated, because no owner is valid for both an organisation and a personal account |
 
 The template refuses to render an inconsistent answer set. `--defaults` will **fail** on
 purpose, because `ci` defaults to on and `workflow_ref` has no safe default:
@@ -103,7 +104,7 @@ you now own, permanently.
 | **ci** | any automated check at all | a thin caller of the org's shared workflow |
 | **deps** | the repo has any dependency | Renovate config + dependency review. **In an organisation**, dependency review also needs the org's Advanced Security features applied to repositories — see below |
 | **docs** | architecture exists | `docs/architecture.md` and an ADR index |
-| **contributing** | you accept outside contributions | `CONTRIBUTING.md`, `CODEOWNERS`, branch-protection hardening |
+| **contributing** | you accept outside contributions | `CONTRIBUTING.md`, branch-protection hardening, and `.github/CODEOWNERS` **only when you name an owner** |
 | **env** | contributors need reproducibility | a devcontainer |
 | **security** | public repo or external users | gitleaks, OpenSSF Scorecard *(requires `ci`)* |
 | **release** | you publish a versioned artifact | `cliff.toml`, a release workflow *(requires `ci`)* |
@@ -211,6 +212,12 @@ runs `copier update`, and opens or updates a pull request on `chore/copier-sync`
 | The [Settings app](https://github.com/apps/settings) installed | optional, and narrower than it looks: it applies the `repository:` feature block and the label colours and descriptions, but **not** the `branches:` protection block ([runbook §5.10](docs/validation-runbook.md)), and installing it does nothing to existing repositories until something pushes `settings.yml`. The sync PR does not depend on it — `create-pull-request` creates a missing `template-sync` label itself |
 | Required status checks configured | `COPIER_SYNC_AUTO_MERGE=true` means *merge when checks pass*; with no required checks it means **merge immediately** |
 | Repository variables `COPIER_SYNC_ENABLED`, `COPIER_SYNC_AUTO_MERGE`, `GHAS_ENABLED` | see the runbook |
+
+**The sync never deletes files.** `copier update` renders the new template over the old one but
+removes nothing, so turning a module off, or clearing an answer that used to generate a file,
+stops that file being rendered and leaves the existing copy in place. Delete it in the same
+commit. Verified in `scripts/test-matrix.sh` by turning a module off and watching its files
+survive the update.
 
 ### Branch protection is applied by hand
 
