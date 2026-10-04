@@ -44,11 +44,37 @@ gh api repos/<org>/.github/commits/main --jq .sha
 If that repository has no callable workflow yet, [runbook P2](docs/validation-runbook.md) has a
 minimal `workflow_call` workflow to start from.
 
+**Once per personal account**, before the first scaffold, there is one thing to create: that
+shared-workflow repository. `ci` is a caller of it, so without it the workflow cannot load. **Name
+the workflow and its job the same thing** — GitHub reports the check as `<workflow> / <job>`, and
+branch protection has to name that string exactly, so `ci` for both gives the `ci / ci` every
+generated repository's protection block declares:
+
+```bash
+mkdir -p /tmp/dotgithub/.github/workflows && cd /tmp/dotgithub
+cat > .github/workflows/ci.yml <<'YAML'
+name: ci
+on: workflow_call
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "shared CI ran for ${GITHUB_REPOSITORY}"
+YAML
+git init -b main && git add -A && git commit -m "feat: add the shared CI workflow"
+gh repo create <you>/.github --public --source=. --push
+gh api repos/<you>/.github/commits/main --jq .sha   # this is workflow_ref
+```
+
+That gate is a placeholder — it reports the check and runs nothing, exactly like a shared workflow
+in an organisation. It is also the only place a check can be added for every repository at once, so
+it is worth a look once the repository itself works.
+
 **On a personal account**, the same flow works with a few translations:
 
-- Set `org_slug` to your username. `<you>/.github` fills the shared-workflow role, so `ci` still
-  resolves; if you would rather not maintain one, turn `ci` off — which also turns off
-  `security`, `release` and `ops`, because they are CI jobs.
+- Set `org_slug` to your username, and create `<you>/.github` first — see above; without it `ci`
+  cannot even load. If you would rather not maintain one, turn `ci` off instead, which also turns
+  off `security`, `release` and `ops`, because they are CI jobs.
 - `codeowners_team` can stay empty, and on a personal account it normally should: the default is
   no owner, which generates no `.github/CODEOWNERS` at all. A valid owner is a team or a user — an
   organisation handle on its own is not one, and a personal account has no teams — so nothing is
@@ -67,7 +93,8 @@ minimal `workflow_call` workflow to start from.
   results for a private repository.
 - Branch protection on a **private** personal repository needs a paid plan; public is free.
 - The sync GitHub App is created under your account and installed on it; `COPIER_SYNC_*` live on
-  the repository rather than the organisation.
+  the repository rather than the organisation. This one is optional and often not worth it: skip
+  it and run `uvx copier update --defaults --trust` by hand when you want template changes.
 
 ### 2. Copy the template
 

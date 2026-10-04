@@ -62,9 +62,10 @@ this exists. Minimal probe:
 
 ```yaml
 # <org>/.github/.github/workflows/ci.yml
+name: ci
 on: workflow_call
 jobs:
-  ok:
+  ci:
     runs-on: ubuntu-latest
     steps:
       - run: echo ok
@@ -72,6 +73,12 @@ jobs:
 
 It must declare `workflow_call` and must not require inputs or secrets the caller does not
 pass. Record the commit: `gh api repos/<org>/.github/commits/main --jq .sha`.
+
+**Name the workflow and its job the same thing.** GitHub reports a reusable workflow's check as
+`<workflow name> / <job name>`, and branch protection has to name that string exactly. The
+unnamed version of this example reports `.github/workflows/ci.yml / ok`, which matches nothing —
+while `name: ci` with a job `ci` reports **`ci / ci`**, the name the README's `gh api`
+branch-protection call requires and every generated repository's protection block declares.
 
 **P3. Create a GitHub App for the sync token** — preferred over a PAT because it is
 org-owned, revocable, auditable, and not tied to a person's account. Create it under the
@@ -787,6 +794,56 @@ Unfixable from any repository, and worth knowing before adopting: the Settings a
 account, so a personal account gets **no** settings enforcement at all — `.github/settings.yml` is
 inert there until the app is installed on that account, and its `branches:` block does not work
 even where it is (§5.10).
+
+### 5.12 The personal-account path, prepared and timed — **well inside the budget**
+
+§5.11 verified that a personal-account render *behaves* correctly, and showed the account was **not
+prepared**: with no `<user>/.github`, `ci` could not load at all. On 2026-10-04 that was fixed and
+the whole path was then run once with a clock on it.
+
+**One-time preparation.** A public `TanKhoiTV/.github` was created holding one reusable workflow,
+named `ci`, with its only job also named `ci`. That naming is the whole point: GitHub reports the
+check as **`ci / ci`**, which is the name branch protection must match. P2's original example named
+neither, so a reader following it literally would have got a check called
+`.github/workflows/ci.yml / ok` and a protection rule that silently matches nothing. P2 now says so.
+
+**The drill.** A throwaway public repository was scaffolded from `v0.5.4` with `org_slug=TanKhoiTV`,
+`workflow_ref` taken from that workflow's commit SHA, and the `commits`, `ci`, `deps`, `docs`,
+`contributing` and `security` modules enabled.
+
+| Phase | Measured |
+| :--- | :--- |
+| `copier copy` (render) | **3 s** |
+| `just health`, reporting the stubs | **0 s** |
+| `git init` + commit | **0 s** |
+| `gh repo create` + push | **9 s** |
+| enable the dependency graph | **2 s** |
+| **all of the above** | **14 s** |
+| push checks settled — `ci / ci`, Scan for secrets, Scorecard | +160 s |
+| pull-request checks settled — those plus Lint commit messages and Review dependency changes | +168 s |
+
+Every check passed on both the push and the pull request, `ci / ci` included, and `just health`
+reported exactly what was left: `core` 🟡 incomplete (the README stub) and the modules nobody had
+decided about ❓ unrecorded, with six of the eight enabled modules already ✅ complete.
+
+The mechanical cost is therefore **under three minutes**, against the spec's 30–60 minutes per
+repository and the goal of under two hours. Scaffolding is no longer the slow part; deciding the
+module set and filling the stubs is.
+
+**A correction to the method, worth keeping.** The first attempt at this drill reported
+`Review dependency changes: fail`, and the fault was the drill, not the template: the command that
+enables the dependency graph had its output sent to `/dev/null`, so nothing confirmed it had taken
+effect. Re-run reading the status — `gh api -X PUT repos/<owner>/<repo>/vulnerability-alerts`
+answering `204 No Content` — and the same check passed. A step whose effect is not read back is not
+a step that has been done, which is the same lesson as treating the organisation's
+`sha_pinning_required` as a passed item while it was still `false` (P6, BUILD_PLAN row 39).
+
+**Caveat, stated plainly:** that shared gate is a **placeholder**. It reports `ci / ci` and runs no
+checks of its own, exactly like the organisation's shared workflow. A generated repository's real
+checks are the three it carries (`commitlint`, `gitleaks`, `dependency-review`); its own `justfile`
+has no lint or test recipe, because linting is this template's concern and not the payload's. So a
+genuine fleet-wide gate for a personal account would have to live in `<you>/.github` — which is a
+decision for the account owner, and is now the only thing between this path and a supported one.
 
 ## 6. Evidence and exit criteria
 
