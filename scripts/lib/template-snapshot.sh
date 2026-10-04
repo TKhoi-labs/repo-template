@@ -25,7 +25,10 @@ make_template_snapshot() {
   local root="${1:?make_template_snapshot: root required}"
   local dest="${2:?make_template_snapshot: dest required}"
 
-  [ -d "$root" ] || { printf 'snapshot: %s is not a directory\n' "$root" >&2; return 1; }
+  [ -d "$root" ] || {
+    printf 'snapshot: %s is not a directory\n' "$root" >&2
+    return 1
+  }
   rm -rf "$dest"
   mkdir -p "$dest"
   # Exclude .build so the snapshot cannot recurse into itself.

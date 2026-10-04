@@ -60,6 +60,12 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
+      - name: Lint this repository
+        run: |
+          # The suites lint the *rendered* trees; nothing else checked this
+          # repository's own files, so a broken lint gate here was invisible.
+          just lint
+
       - name: Run the suites
         env:
           # The suites default to `uvx copier`, and no `uv` is installed here,
