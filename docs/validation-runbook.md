@@ -646,6 +646,15 @@ This is the clearest case in the whole build for the rule that reading a file is
 verification. There was nothing wrong with the file to look at. The only way to find it was to
 build the container and run something inside it — which is now what CI does on every push.
 
+**Then the job found a second defect in the same line, months of commits later.** The `just`
+binary came from piping `https://just.systems/install.sh` into `bash`, and the installer started
+answering `curl: (22) The requested URL returned error: 403`, which failed the build on a commit
+that had nothing to do with the devcontainer. Everything else in that image already came from
+`pipx`, and the PyPI package `rust-just` ships the same binary — the suites and CI have used it
+all along — so the curl is gone and `pipx` installs all three tools. A container is now built
+from one mechanism instead of two, and it no longer depends on a third party's script resolving
+the latest release at build time.
+
 ### 5.10 The Settings app applies two of its three sections — **silently**
 
 Item 3 asked whether installing [`repository-settings/app`](https://github.com/apps/settings) turns
