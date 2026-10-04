@@ -221,6 +221,30 @@ for code in 0 1 2; do
 done
 
 # ---------------------------------------------------------------------------
+# 8. The README's Version row does not fall behind the tags
+#
+# The row read `v0.1.0` while the template had reached `v0.3.3`: a status table
+# that quietly lied. The invariant is deliberately *monotonic*, not equality. A
+# release tag is pushed after the merge it releases, and a preparation commit
+# may name the next version before its tag exists; requiring equality would fail
+# both of those ordinary states, which is a release-process dependency rather
+# than a documentation check.
+# ---------------------------------------------------------------------------
+echo "== version row =="
+readme_version="$(grep -m1 -oE '^\| Version \|[^0-9]*v[0-9]+\.[0-9]+\.[0-9]+' "$README" \
+  | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')"
+latest_tag="$(git -C "$ROOT" tag --list 'v*' --sort=-v:refname | head -n1)"
+if [ -z "$readme_version" ]; then
+  bad "README has no readable Version row (expected '| Version | vX.Y.Z |')"
+elif [ -z "$latest_tag" ]; then
+  skip "version row: no version tags in this checkout (shallow clone?)"
+elif [ "$(printf '%s\n%s\n' "$readme_version" "$latest_tag" | sort -V | head -n1)" = "$latest_tag" ]; then
+  ok "README Version $readme_version is not behind the latest tag $latest_tag"
+else
+  bad "README Version is $readme_version but the latest tag is $latest_tag"
+fi
+
+# ---------------------------------------------------------------------------
 echo
 printf 'passed %d, failed %d\n' "$pass" "$fail"
 [ "$fail" -eq 0 ] || exit 1

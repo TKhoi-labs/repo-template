@@ -235,7 +235,7 @@ just clean
 | `test-health` | the five health states against fixtures |
 | `test-matrix` | 14 configurations, ownership disjointness, SHA pinning, `copier update` idempotency, answer migration |
 | `test-rendered` | actionlint, zizmor, git-cliff, `just`, and the conflict guard, against rendered output |
-| `test-docs` | the README's own commands, run; every question, module and ADR checked against the tree |
+| `test-docs` | the README's own commands, run; every question, module and ADR checked against the tree; the `Version` row checked against the tags |
 
 CI runs the same suites on every push and pull request
 (`.github/workflows/template-ci.yml`) — so a change is checked without anyone remembering to run
