@@ -44,11 +44,15 @@ jobs:
     # on (see the header); private ones must opt in here.
     if: ${{ !github.event.repository.private || vars.GHAS_ENABLED == 'true' }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
-      - uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4
+      # This action publishes no floating major tag - its major tags stop at v3 while its
+      # releases are v4.x and v5.0.0 - so an updater cannot resolve a digest for a major bump
+      # and reports "Could not determine new digest" instead. The comment names the release for
+      # that reason; the pin itself is still a full commit SHA, as ADR-0009 requires.
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
           fail-on-severity: high
 {% endraw -%}

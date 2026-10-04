@@ -13,7 +13,7 @@ still a stub, and a workflow opens a pull request when the template changes.
 
 | | |
 | :--- | :--- |
-| Version | `v0.5.4` |
+| Version | `v0.6.0` |
 | Local checks | `just test` — six suites, see [Working on this template](#working-on-this-template) |
 | Adapts to the account | rendered **and pushed to a real personal account**, as well as to the organisation; the matrix asserts both, and the live run confirmed where they differ: no CODEOWNERS is invented, gitleaks passes with no licence, and the dependency graph is a per-repository setting |
 | Can be left | `just eject` in a generated repository detaches it: no sync, no module tracking, nothing generated any more |
@@ -350,13 +350,29 @@ Renovate raises a pull request for a payload pin, the change reaches consumers t
 reviewing it means reviewing what a generated repository will run — `test-rendered` lints the
 rendered workflows, which catches structure and security findings but not changed behaviour.
 
+Those majors — and a fifth, `github/codeql-action/upload-sarif` v3→v4 — were landed in `v0.6.0`
+after reading each major's release notes rather than trusting the version number. Nothing here uses
+the `git-token` input that `create-pull-request` v7 renamed or the output it removed, `sarif_file`
+is unchanged in `codeql-action` v4, and all eight `checkout` usages already set
+`persist-credentials: false`, so v6's credential-handling change cannot reach them. One bump was
+not optional: `gitleaks-action@v2` runs on Node 20, which GitHub removes from hosted runners on
+2026-09-16.
+
+**One updater warning is upstream's shape, not a defect.** Renovate proposes a major bump as the
+*floating* tag, and `actions/dependency-review-action` has never published one — its major tags stop
+at `v3` while its releases are `v4.x` and `v5.0.0`. With no tag to resolve, the dependency dashboard
+reports *"Could not determine new digest for update (github-tags package
+actions/dependency-review-action)"*, and that single update can never become a pull request. Its
+pin's comment therefore names the release (`# v5.0.0`), which is the comment form to keep for any
+action that does not publish a floating major tag.
+
 Rendering in the suites runs from a tagged snapshot of the working tree, so the tests see
 uncommitted work and are not affected by tags placed on this repository.
 
 **After merging a change, tag it** — otherwise no generated repository receives it:
 
 ```bash
-git tag -a v0.5.4 -m "..." && git push --follow-tags
+git tag -a v0.6.0 -m "..." && git push --follow-tags
 ```
 
 Bump the `Version` row at the top of this README in the same commit. `test-docs` asserts that it

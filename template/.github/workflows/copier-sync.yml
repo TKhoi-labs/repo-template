@@ -61,7 +61,7 @@ jobs:
     steps:
       # persist-credentials: false keeps the job's GITHUB_TOKEN out of the
       # local git config, where later steps could leak it.
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -124,7 +124,7 @@ jobs:
         # is nothing to sync and updates an existing pull request instead of
         # failing, which is what makes a re-run safe.
         id: pr
-        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8
         with:
           # The app token, never GITHUB_TOKEN: a pull request opened with
           # GITHUB_TOKEN triggers no workflows, so required checks never report
