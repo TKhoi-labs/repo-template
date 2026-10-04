@@ -60,7 +60,7 @@ render_config() { # name, enabled-modules
       *) args+=(-d "module_$m=false") ;;
     esac
   done
-  rm -rf "$BUILD/$name"
+  rm -rf "${BUILD:?}/$name"
   # shellcheck disable=SC2086
   $COPIER copy --defaults \
     -d "project_name=$(printf '%s' "$name" | tr '+' '-')" \

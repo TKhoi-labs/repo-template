@@ -26,8 +26,20 @@ fail=0
 ok() { printf '  ok    %s\n' "$1"; pass=$((pass + 1)); }
 bad() { printf '  FAIL  %s\n' "$1"; fail=$((fail + 1)); }
 
-expect_file() { [ -f "$1" ] && ok "exists  ${1#"$BUILD"/}" || bad "missing ${1#"$BUILD"/}"; }
-expect_absent() { [ ! -e "$1" ] && ok "absent  ${1#"$BUILD"/}" || bad "present ${1#"$BUILD"/}"; }
+expect_file() {
+  if [ -f "$1" ]; then
+    ok "exists  ${1#"$BUILD"/}"
+  else
+    bad "missing ${1#"$BUILD"/}"
+  fi
+}
+expect_absent() {
+  if [ ! -e "$1" ]; then
+    ok "absent  ${1#"$BUILD"/}"
+  else
+    bad "present ${1#"$BUILD"/}"
+  fi
+}
 expect_contains() {
   if grep -q -- "$2" "$1" 2>/dev/null; then
     ok "$(basename "$1") contains: $2"
@@ -59,7 +71,7 @@ expect_stub_set() {
 render() {
   local name="$1"
   shift
-  rm -rf "$BUILD/$name"
+  rm -rf "${BUILD:?}/$name"
   # shellcheck disable=SC2086
   $COPIER copy --defaults -d "project_name=$name" -d org_slug=example \
     -d workflow_ref=1111111111111111111111111111111111111111 "$@" \

@@ -32,7 +32,7 @@ make_template_snapshot() {
   rsync -a --exclude .git --exclude .build "$root/" "$dest/"
 
   (
-    cd "$dest"
+    cd "$dest" || exit 1
     git init -q .
     git add -A
     git -c user.email=template@example.invalid \
