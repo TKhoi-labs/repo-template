@@ -1,0 +1,18 @@
+# Editor and formatter settings for this repository's own tooling.
+#
+# The payload ships its own .editorconfig to generated repositories; this one governs the
+# template. `switch_case_indent` matters here: shfmt reads it from .editorconfig, and without
+# it every `case` branch in scripts/ gets re-indented, which is a change no test asks for.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.sh]
+indent_style = space
+indent_size = 2
+switch_case_indent = true

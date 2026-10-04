@@ -43,12 +43,16 @@ jobs:
       # workflow installs, so both test the same generator.
       - name: Install the tools the suites use
         run: |
+          # Every version is pinned. An unpinned tool is a check that can start
+          # failing because upstream released something, which is how the
+          # devcontainer's `just` install broke: a moving target, not a defect.
           pipx install copier==9.18.2
-          pipx install yamllint
-          pipx install git-cliff
-          pipx install rust-just
-          pipx install zizmor
-          go install github.com/rhysd/actionlint/cmd/actionlint@latest
+          pipx install yamllint==1.38.0
+          pipx install git-cliff==2.14.2
+          pipx install rust-just==1.58.0
+          pipx install zizmor==1.30.1
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+          go install mvdan.cc/sh/v3/cmd/shfmt@v3.14.1
           # Later steps must be able to find these. pipx installs console
           # scripts into a directory that is not on the runner's PATH by
           # default, which is how the first run of this job failed with exit

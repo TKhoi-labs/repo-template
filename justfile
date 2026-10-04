@@ -38,7 +38,8 @@ test: test-template test-health test-matrix test-rendered test-docs test-eject
 # Lint this template repo.
 lint:
     yamllint copier.yml .github/workflows/template-ci.yml
-    shellcheck scripts/test-template.sh scripts/test-health.sh scripts/test-matrix.sh scripts/test-rendered.sh scripts/test-docs.sh scripts/test-eject.sh scripts/lib/template-snapshot.sh
+    shellcheck scripts/*.sh scripts/lib/*.sh
+    shfmt -d scripts template/scripts
 
 # Remove generated artifacts.
 clean:

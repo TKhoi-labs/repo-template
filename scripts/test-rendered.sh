@@ -27,8 +27,14 @@ MODULES="commits ci deps docs contributing env security release ops"
 
 pass=0
 fail=0
-ok() { printf '  ok    %s\n' "$1"; pass=$((pass + 1)); }
-bad() { printf '  FAIL  %s\n' "$1"; fail=$((fail + 1)); }
+ok() {
+  printf '  ok    %s\n' "$1"
+  pass=$((pass + 1))
+}
+bad() {
+  printf '  FAIL  %s\n' "$1"
+  fail=$((fail + 1))
+}
 skip() { printf '  skip  %s\n' "$1"; }
 
 # If/then/else rather than `grep && ok || bad`: with that form, a failing report

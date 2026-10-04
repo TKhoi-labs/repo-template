@@ -49,8 +49,14 @@ CONFIGS=(
 
 pass=0
 fail=0
-ok() { printf '  ok    %s\n' "$1"; pass=$((pass + 1)); }
-bad() { printf '  FAIL  %s\n' "$1"; fail=$((fail + 1)); }
+ok() {
+  printf '  ok    %s\n' "$1"
+  pass=$((pass + 1))
+}
+bad() {
+  printf '  FAIL  %s\n' "$1"
+  fail=$((fail + 1))
+}
 
 count_files() { find "$1" -type f | wc -l | tr -d ' '; }
 
@@ -141,7 +147,7 @@ total_added=$((c_ci - c_core)) # ci contributes on its own
 
 add_module() { # dir, base-count, module
   local added
-  added=$(( $(count_files "$1") - $2 ))
+  added=$(($(count_files "$1") - $2))
   if [ "$added" -le 0 ]; then
     bad "module $3 contributes no files (added=$added)"
   fi
@@ -155,7 +161,7 @@ for m in security release ops; do
   add_module "$BUILD/core+ci+$m" "$c_ci" "$m"
 done
 
-all_added=$(( $(count_files "$BUILD/all-on") - c_core ))
+all_added=$(($(count_files "$BUILD/all-on") - c_core))
 if [ "$total_added" -eq "$all_added" ]; then
   ok "modules own disjoint file sets ($all_added files, no overlap)"
 else
@@ -206,7 +212,7 @@ for entry in "${CONFIGS[@]}"; do
 
   rc=0
   # shellcheck disable=SC2086
-  ( cd "$dir" && $COPIER update --defaults --trust . ) \
+  (cd "$dir" && $COPIER update --defaults --trust .) \
     >"$BUILD/update-$(printf '%s' "$name" | tr '+' '-').log" 2>&1 || rc=$?
 
   dirty="$(cd "$dir" && git status --porcelain)"
@@ -338,7 +344,7 @@ sed -i "s|^codeowners_team:.*|codeowners_team: ''|" "$CW/.copier-answers.yml"
 ) >/dev/null 2>&1
 
 rc=0
-( cd "$CW" && $COPIER update --defaults --trust . ) >"$BUILD/update-codeowners.log" 2>&1 || rc=$?
+(cd "$CW" && $COPIER update --defaults --trust .) >"$BUILD/update-codeowners.log" 2>&1 || rc=$?
 if [ "$rc" -ne 0 ]; then
   bad "codeowners: copier update exited $rc"
   tail -3 "$BUILD/update-codeowners.log" | sed 's/^/        /'
@@ -358,7 +364,7 @@ sed -i "s|^module_contributing:.*|module_contributing: false|" "$CW/.copier-answ
 ) >/dev/null 2>&1
 
 rc=0
-( cd "$CW" && $COPIER update --defaults --trust . ) >"$BUILD/update-module-off.log" 2>&1 || rc=$?
+(cd "$CW" && $COPIER update --defaults --trust .) >"$BUILD/update-module-off.log" 2>&1 || rc=$?
 if [ "$rc" -ne 0 ]; then
   bad "module off: copier update exited $rc"
   tail -3 "$BUILD/update-module-off.log" | sed 's/^/        /'

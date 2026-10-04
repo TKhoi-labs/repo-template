@@ -25,8 +25,14 @@ TEMPLATE="$BUILD/template-src"
 
 pass=0
 fail=0
-ok() { printf '  ok    %s\n' "$1"; pass=$((pass + 1)); }
-bad() { printf '  FAIL  %s\n' "$1"; fail=$((fail + 1)); }
+ok() {
+  printf '  ok    %s\n' "$1"
+  pass=$((pass + 1))
+}
+bad() {
+  printf '  FAIL  %s\n' "$1"
+  fail=$((fail + 1))
+}
 skip() { printf '  skip  %s\n' "$1"; }
 
 expect_grep() { # pattern, file, label
@@ -152,7 +158,7 @@ check_links() { # file
   dir="$(dirname "$file")"
   while IFS= read -r target; do
     case "$target" in
-      http*|mailto:*|'#'*|'') continue ;;
+      http* | mailto:* | '#'* | '') continue ;;
     esac
     target="${target%%#*}"
     [ -e "$dir/$target" ] || broken="$broken $target"
@@ -231,8 +237,8 @@ done
 # than a documentation check.
 # ---------------------------------------------------------------------------
 echo "== version row =="
-readme_version="$(grep -m1 -oE '^\| Version \|[^0-9]*v[0-9]+\.[0-9]+\.[0-9]+' "$README" \
-  | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')"
+readme_version="$(grep -m1 -oE '^\| Version \|[^0-9]*v[0-9]+\.[0-9]+\.[0-9]+' "$README" |
+  grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')"
 latest_tag="$(git -C "$ROOT" tag --list 'v*' --sort=-v:refname | head -n1)"
 if [ -z "$readme_version" ]; then
   bad "README has no readable Version row (expected '| Version | vX.Y.Z |')"

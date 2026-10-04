@@ -13,7 +13,7 @@ still a stub, and a workflow opens a pull request when the template changes.
 
 | | |
 | :--- | :--- |
-| Version | `v0.5.1` |
+| Version | `v0.5.2` |
 | Local checks | `just test` — six suites, see [Working on this template](#working-on-this-template) |
 | Adapts to the account | renders for an **organisation** or a **personal account**; asserted for both, since the shared workflow, the CODEOWNERS owner and the security features differ |
 | Can be left | `just eject` in a generated repository detaches it: no sync, no module tracking, nothing generated any more |
@@ -275,7 +275,7 @@ conflict locally and re-run.
 
 ```bash
 just test     # every check: rendering, module gating, health, matrix, rendered artifacts, docs, the exit path
-just lint     # yamllint + shellcheck
+just lint     # yamllint + shellcheck + shfmt
 just clean
 ```
 
@@ -299,7 +299,7 @@ uncommitted work and are not affected by tags placed on this repository.
 **After merging a change, tag it** — otherwise no generated repository receives it:
 
 ```bash
-git tag -a v0.5.1 -m "..." && git push --follow-tags
+git tag -a v0.5.2 -m "..." && git push --follow-tags
 ```
 
 Bump the `Version` row at the top of this README in the same commit. `test-docs` asserts that it

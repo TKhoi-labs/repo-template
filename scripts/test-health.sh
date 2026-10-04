@@ -20,7 +20,10 @@ MODULES="commits ci deps docs contributing env security release ops"
 
 pass=0
 fail=0
-ok() { printf '  ok    %s\n' "$1"; pass=$((pass + 1)); }
+ok() {
+  printf '  ok    %s\n' "$1"
+  pass=$((pass + 1))
+}
 bad() {
   printf '  FAIL  %s\n' "$1"
   fail=$((fail + 1))

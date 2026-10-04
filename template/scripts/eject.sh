@@ -26,12 +26,12 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 apply=0
 case "${1:-}" in
-  ""|--dry-run) ;;
-  --yes|-y) apply=1 ;;
-  *)
-    printf 'usage: scripts/eject.sh [--dry-run|--yes]\n' >&2
-    exit 2
-    ;;
+"" | --dry-run) ;;
+--yes | -y) apply=1 ;;
+*)
+  printf 'usage: scripts/eject.sh [--dry-run|--yes]\n' >&2
+  exit 2
+  ;;
 esac
 
 if [ "$apply" -eq 1 ]; then

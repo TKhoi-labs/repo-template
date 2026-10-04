@@ -19,7 +19,10 @@ SHA=1111111111111111111111111111111111111111
 
 pass=0
 fail=0
-ok() { printf '  ok    %s\n' "$1"; pass=$((pass + 1)); }
+ok() {
+  printf '  ok    %s\n' "$1"
+  pass=$((pass + 1))
+}
 bad() {
   printf '  FAIL  %s\n' "$1"
   fail=$((fail + 1))
@@ -156,7 +159,7 @@ echo "== detached =="
 ) >/dev/null 2>&1
 
 rc=0
-( cd "$D" && $COPIER update --defaults --trust . ) >"$BUILD/update.log" 2>&1 || rc=$?
+(cd "$D" && $COPIER update --defaults --trust .) >"$BUILD/update.log" 2>&1 || rc=$?
 if [ "$rc" -ne 0 ]; then
   ok "copier update refuses in an ejected repository"
 else

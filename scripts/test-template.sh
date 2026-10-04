@@ -23,8 +23,14 @@ MODULES=(commits ci deps docs contributing env security release ops)
 
 pass=0
 fail=0
-ok() { printf '  ok    %s\n' "$1"; pass=$((pass + 1)); }
-bad() { printf '  FAIL  %s\n' "$1"; fail=$((fail + 1)); }
+ok() {
+  printf '  ok    %s\n' "$1"
+  pass=$((pass + 1))
+}
+bad() {
+  printf '  FAIL  %s\n' "$1"
+  fail=$((fail + 1))
+}
 
 expect_file() {
   if [ -f "$1" ]; then
@@ -168,8 +174,8 @@ echo "== negative DAG =="
 for m in security release ops; do
   rm -rf "$BUILD/negative-$m"
   if $COPIER copy --defaults -d "project_name=negative-$m" \
-      -d module_ci=false -d "module_$m=true" "$TEMPLATE" "$BUILD/negative-$m" \
-      >/dev/null 2>&1; then
+    -d module_ci=false -d "module_$m=true" "$TEMPLATE" "$BUILD/negative-$m" \
+    >/dev/null 2>&1; then
     bad "module_$m without ci should have failed"
   else
     ok "module_$m without ci fails"
