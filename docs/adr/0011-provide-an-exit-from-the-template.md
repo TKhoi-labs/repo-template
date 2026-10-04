@@ -52,6 +52,10 @@ leaving the template.
 
 Ejecting is one-way, and the suite says so: after an eject, `copier update` fails and nothing is
 recreated. A repository that wants the template back has to re-render it and reconcile by hand.
+That was also run for real, not only in the suite: `probe-conflict`, a copy that predates this
+decision by several minor versions, was handed the script and ejected. The files went from GitHub,
+the sync workflow disappeared from its Actions list, and `copier update` then refused with
+*"Cannot update because cannot obtain old template references from `.copier-answers.yml`."*
 
 Prose is reported rather than rewritten. The README's next steps, the architecture document's
 health section and the contributing guide's "Generated files" section cannot be edited without
