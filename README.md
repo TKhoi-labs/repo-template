@@ -13,9 +13,9 @@ still a stub, and a workflow opens a pull request when the template changes.
 
 | | |
 | :--- | :--- |
-| Version | `v0.1.0` |
-| Local checks | `just test` — four suites, see [Working on this template](#working-on-this-template) |
-| Verified against a live org | **13 of 14 items fully verified**, plus item 3 partly: the Settings app applies the repository feature block and the labels, but not `branches:` (§5.10). All on a free-plan org — see the execution record in [`docs/validation-runbook.md`](docs/validation-runbook.md) |
+| Version | `v0.3.3` |
+| Local checks | `just test` — five suites, see [Working on this template](#working-on-this-template) |
+| Verified against a live org | **14 of 15 items fully verified**, with item 3 partly: the Settings app applies the repository feature block and the labels, but not `branches:` (§5.10). All on a free-plan org — see the execution record in [`docs/validation-runbook.md`](docs/validation-runbook.md) |
 
 **Copier copies the latest Git tag, not the working tree.** A change merged to `main` does
 not reach any repository generated from this template until a new tag is pushed. This is a
@@ -85,6 +85,8 @@ you now own, permanently.
 | **contributing** | you accept outside contributions | `CONTRIBUTING.md`, `CODEOWNERS`, branch-protection hardening |
 | **env** | contributors need reproducibility | a devcontainer |
 | **security** | public repo or external users | gitleaks, OpenSSF Scorecard *(requires `ci`)* |
+| **release** | you publish a versioned artifact | `cliff.toml`, a release workflow *(requires `ci`)* |
+| **ops** | the repo is deployed or running | runbooks, observability config *(requires `ci`)* |
 
 **In an organisation, gitleaks needs a free licence key.** A personal account does not:
 
@@ -124,8 +126,6 @@ is enabled per repository when the organisation lets repositories decide; note t
 generally available on **GitHub Team and Enterprise Cloud**, not on Free. The reasoning, the
 evidence and the revisit trigger are in
 [ADR-0010](docs/adr/0010-treat-code-scanning-and-code-quality-as-organisation-state.md).
-| **release** | you publish a versioned artifact | `cliff.toml`, a release workflow *(requires `ci`)* |
-| **ops** | the repo is deployed or running | runbooks, observability config *(requires `ci`)* |
 
 ### 4. Finish the repository
 
@@ -138,12 +138,15 @@ just health
 
 ```text
 Module health
+
   ✅ complete   🟡 incomplete   ⏸ deferred   ⛔ declined   ❓ unrecorded
-  core      🟡 incomplete
-      README.md (stub)
-  commits   ❓ unrecorded
+  Decisions live in docs/adr/0001-initial-deferrals.md
+
+  🟡  core         on — incomplete: README.md (stub)
+  ❓  commits      unrecorded — enable the module, or record a decision for it
   ...
-26 modules need a decision — see docs/adr/0001-initial-deferrals.md
+0 complete, 1 incomplete, 0 deferred, 0 declined, 9 unrecorded
+health: 9 module(s) undecided.
 ```
 
 Two things to do, in order:
@@ -183,7 +186,7 @@ runs `copier update`, and opens or updates a pull request on `chore/copier-sync`
 
 | Prerequisite | Why |
 | :--- | :--- |
-| `COPIER_SYNC_APP_ID` variable + `COPIER_SYNC_APP_PRIVATE_KEY` secret from a **GitHub App** | a PR opened with the default `GITHUB_TOKEN` triggers no workflows, so required checks never report and the PR is blocked forever. The token is minted per run because installation tokens expire after one hour, so it cannot be stored as a secret |
+| `COPIER_SYNC_APP_ID` variable + `COPIER_SYNC_APP_PRIVATE_KEY` secret from a **GitHub App** | a PR opened with the default `GITHUB_TOKEN` triggers no workflows, so required checks never report and the PR is blocked forever. The token is minted per run because installation tokens expire after one hour, so it cannot be stored as a secret. The App needs **Contents**, **Pull requests** and **Workflows** read/write: without the last, the sync PR is rejected the moment it touches `.github/workflows/` ([runbook §5.3](docs/validation-runbook.md)) |
 | The [Settings app](https://github.com/apps/settings) installed | optional, and narrower than it looks: it applies the `repository:` feature block and the label colours and descriptions, but **not** the `branches:` protection block ([runbook §5.10](docs/validation-runbook.md)), and installing it does nothing to existing repositories until something pushes `settings.yml`. The sync PR does not depend on it — `create-pull-request` creates a missing `template-sync` label itself |
 | Required status checks configured | `COPIER_SYNC_AUTO_MERGE=true` means *merge when checks pass*; with no required checks it means **merge immediately** |
 | Repository variables `COPIER_SYNC_ENABLED`, `COPIER_SYNC_AUTO_MERGE`, `GHAS_ENABLED` | see the runbook |
