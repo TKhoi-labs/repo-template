@@ -155,7 +155,8 @@ became evidence for [ADR-0011](adr/0011-provide-an-exit-from-the-template.md) on
 ejected for real, so its `.copier-answers.yml` and its sync workflow are gone from GitHub and
 `copier update` refuses with *"Cannot update because cannot obtain old template references from
 `.copier-answers.yml`."* Archiving is reversible, and an archived probe can be unarchived if a case
-needs re-running.
+needs re-running. A fourth probe never persisted: `TanKhoiTV/personal-probe` existed for an hour on
+the personal account to test the account-kind claims (§5.11), then was deleted.
 
 | Item | Result | Evidence |
 | :--- | :--- | :--- |
@@ -733,6 +734,59 @@ escalates anyone with `push` permissions to the **admin** role", because that is
 the file it obeys.
 
 ---
+
+### 5.11 The personal-account path, verified live — **and two claims were wrong**
+
+The README has always said the template works on a personal account, and the test matrix asserted
+it offline. On 2026-10-04 that was tested against GitHub itself: a throwaway public repository
+(`TanKhoiTV/personal-probe`) rendered from `v0.5.3` with `org_slug=TanKhoiTV` and the `commits`,
+`ci`, `deps`, `docs`, `contributing` and `security` modules, pushed, exercised with a pull request,
+then deleted.
+
+What held:
+
+| Claim | Result |
+| :--- | :--- |
+| A personal account needs no `codeowners_team` | held — **no CODEOWNERS was generated**, so nothing invalid ships |
+| `ci` resolves through `<user>/.github` | held — `ci.yml` called `TanKhoiTV/.github/.github/workflows/ci.yml@<sha>` |
+| gitleaks needs no licence on a personal account | held — **Scan for secrets passed with no `GITLEAKS_LICENSE`**, where the organisation needed the free key (§5.5) |
+| Scorecard publishes for a public repository | held — *Scorecard analysis* succeeded |
+| commitlint runs on a pull request | held — *Lint commit messages* passed |
+| a fresh render reports honestly | held — `just health` exits 1 with `core` incomplete and the other modules unrecorded |
+| `<user>/.github` must exist | held, and harder than the docs implied — see below |
+| dependency review is free on public repositories | **wrong** — see below |
+
+**Correction one: dependency review is not automatic on a personal account.** On a *public*
+personal repository the job failed:
+
+```text
+Dependency review is not supported on this repository.
+Please ensure that Dependency graph is enabled
+```
+
+The dependency graph is **off by default even on a public repository**, and a personal account has
+no organisation settings to apply it from, so the per-repository toggle is the only one that
+exists. `gh api -X PUT repos/<owner>/<repo>/vulnerability-alerts` switches it on, and the same
+commit's job then passed with **no change to the workflow**. The README and the shipped workflow's
+header comment said the opposite — *"a public repository has nothing to enable locally"* — which is
+true inside an organisation and false on a personal account. Both are corrected; the sentence had
+survived because only an organisation had ever been tried.
+
+**Correction two: a missing shared workflow is worse than a failing one.** When `<user>/.github`
+does not exist, `ci.yml` cannot *load*: GitHub reports a failed run — *"This run likely failed
+because of a workflow file issue"* — and creates **no check run at all**. The pull request therefore
+showed three passing checks and no `ci` check, not even a red one. A required status check named
+`ci / ci` is then not merely unsatisfied but **unsatisfiable**, and branch protection would block
+every pull request with nothing failing to explain it. That applies to an organisation too, and the
+README's branch-protection section now says so.
+
+**Still untested, deliberately.** The private personal-repository claims: GitHub Advanced Security
+is needed for dependency review there, and branch protection needs a paid plan. The probe was
+public, and testing those would need a paid account, so they remain documented but unverified.
+Unfixable from any repository, and worth knowing before adopting: the Settings app is installed per
+account, so a personal account gets **no** settings enforcement at all — `.github/settings.yml` is
+inert there until the app is installed on that account, and its `branches:` block does not work
+even where it is (§5.10).
 
 ## 6. Evidence and exit criteria
 

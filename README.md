@@ -13,9 +13,9 @@ still a stub, and a workflow opens a pull request when the template changes.
 
 | | |
 | :--- | :--- |
-| Version | `v0.5.3` |
+| Version | `v0.5.4` |
 | Local checks | `just test` — six suites, see [Working on this template](#working-on-this-template) |
-| Adapts to the account | renders for an **organisation** or a **personal account**; asserted for both, since the shared workflow, the CODEOWNERS owner and the security features differ |
+| Adapts to the account | rendered **and pushed to a real personal account**, as well as to the organisation; the matrix asserts both, and the live run confirmed where they differ: no CODEOWNERS is invented, gitleaks passes with no licence, and the dependency graph is a per-repository setting |
 | Can be left | `just eject` in a generated repository detaches it: no sync, no module tracking, nothing generated any more |
 | Verified against a live org | **14 of 15 items fully verified**, with item 3 partly: the Settings app applies the repository feature block and the labels, but not `branches:` (§5.10). All on a free-plan org — see the execution record in [`docs/validation-runbook.md`](docs/validation-runbook.md) |
 
@@ -55,8 +55,14 @@ minimal `workflow_call` workflow to start from.
   guessed. Naming yourself is legal but does no work: you cannot approve your own pull request.
 - Lower `required_approving_review_count` from `2`. You cannot approve your own pull request on
   a personal repository, so a rule asking for two approvals blocks every merge.
-- `deps`: dependency review is free on public repositories; a **private** personal repository
-  needs GitHub Advanced Security, and the job is skipped otherwise (`GHAS_ENABLED`).
+- `deps`: dependency review runs on a personal account, but not out of the box. The dependency
+  graph is **off even on a public repository**, and there is no organisation setting to flip, so
+  the job fails with *"Dependency review is not supported on this repository"* until the graph is
+  enabled for that repository — in its **Code security** settings, or with
+  `gh api -X PUT repos/<owner>/<repo>/vulnerability-alerts`. A **private** personal repository
+  needs GitHub Advanced Security as well, and the job is skipped otherwise (`GHAS_ENABLED`).
+  Verified live: enabling the graph turned that job from failing to passing with no change to the
+  workflow.
 - `security`: gitleaks needs no licence on a personal account, and Scorecard does not publish
   results for a private repository.
 - Branch protection on a **private** personal repository needs a paid plan; public is free.
@@ -117,7 +123,7 @@ you now own, permanently.
 | **core** | always | `justfile`, `scripts/health.sh`, `lefthook.yml`, `settings.yml`, issue forms, the deferrals ADR |
 | **commits** | you want enforced history | commitlint config + a `commitlint` workflow |
 | **ci** | any automated check at all | a thin caller of the org's shared workflow |
-| **deps** | the repo has any dependency | Renovate config + dependency review. The config only works with the [Renovate app](https://github.com/apps/renovate) installed — the file alone updates nothing, which is the gap this template had itself until it added its own `renovate.json`. **In an organisation**, dependency review also needs the org's Advanced Security features applied to repositories — see below |
+| **deps** | the repo has any dependency | Renovate config + dependency review. The config only works with the [Renovate app](https://github.com/apps/renovate) installed — the file alone updates nothing. Dependency review must also be *switched on*, and the switch differs by account: the org's Advanced Security features applied to all repositories, or on a personal account the repository's own dependency graph — see below |
 | **docs** | architecture exists | `docs/architecture.md` and an ADR index |
 | **contributing** | you accept outside contributions | `CONTRIBUTING.md`, branch-protection hardening, and `.github/CODEOWNERS` **only when you name an owner** |
 | **env** | contributors need reproducibility | a devcontainer |
@@ -148,9 +154,11 @@ Dependency review is not supported on this repository.
 Please ensure that Dependency graph is enabled
 ```
 
-There is no *Dependency graph* toggle anywhere in the UI, and a public repository has nothing to
-enable locally — the graph arrives with Dependabot, which is why applying the features org-wide
-is the fix.
+There is no *Dependency graph* toggle anywhere in the **organisation's** settings, and a public
+repository inside an organisation has nothing to enable locally — the graph arrives with
+Dependabot, which is why applying the features org-wide is the fix. A **personal account** is the
+opposite case: there is no organisation to set, and the per-repository toggle is the only one that
+exists, so the fix is local instead (see the personal-account notes above).
 
 **Code scanning and code quality are not managed here, deliberately.** Both complement this
 module but cannot be part of it, because both are settings rather than files: no repository
@@ -264,6 +272,13 @@ both (`ci / ci`). Requiring a check that never reports blocks every pull request
 the `ci` module, set `required_status_checks` to `null` instead — which is what the template
 generates in that case.
 
+A second way to create a check that can never report, verified live on 2026-10-04: if the shared
+workflow repository does not exist yet, `ci.yml` cannot even **load**. GitHub reports a failed run —
+*"This run likely failed because of a workflow file issue"* — and creates **no check run at all**,
+so on the pull request the check is absent rather than red. A required check named `ci / ci` then
+blocks every pull request permanently, with nothing failing to explain why. Reference the shared
+workflow only once it exists, and get `workflow_ref` from it (the commands above assume it does).
+
 Set `COPIER_SYNC_ENABLED=false` to pause scheduled syncs for a repository. A manual
 `workflow_dispatch` still runs, so a paused repository can still be synced deliberately.
 
@@ -314,7 +329,7 @@ uncommitted work and are not affected by tags placed on this repository.
 **After merging a change, tag it** — otherwise no generated repository receives it:
 
 ```bash
-git tag -a v0.5.3 -m "..." && git push --follow-tags
+git tag -a v0.5.4 -m "..." && git push --follow-tags
 ```
 
 Bump the `Version` row at the top of this README in the same commit. `test-docs` asserts that it

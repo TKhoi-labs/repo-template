@@ -3,17 +3,26 @@
 # GitHub Advanced Security; without that entitlement the action errors, so the
 # job skips instead of failing the build (ADR-0008).
 #
-# "Free" is not the same as "enabled". An organisation that has never applied
-# its security features to repositories fails this job with:
+# "Free" is not the same as "enabled". Neither an organisation that has never
+# applied its security features to repositories nor a fresh personal repository
+# passes this job. Both fail with:
 #
 #   Dependency review is not supported on this repository. Please ensure that
 #   Dependency graph is enabled
 #
-# That message is misleading twice over: there is no Dependency graph toggle in
-# the organisation's settings, and a public repository has nothing to enable
-# locally. Applying the organisation's Advanced Security features to **all
-# repositories** is what fixes it, because the dependency graph arrives with
-# Dependabot. Verified: the same commit failed before the setting was applied
+# The two cases need different fixes, and the message names neither:
+#
+#   * Organisation: there is no Dependency graph toggle anywhere in its
+#     settings, and a public repository inside one has nothing to enable
+#     locally - applying the organisation's Advanced Security features to **all
+#     repositories** is the fix, because the dependency graph arrives with
+#     Dependabot.
+#   * Personal account: there is no organisation to set, and the graph is off
+#     even on a **public** repository, so it has to be enabled for that
+#     repository in its Code security settings, or with
+#     `gh api -X PUT repos/<owner>/<repo>/vulnerability-alerts`.
+#
+# Verified in both cases: the same commit failed before the setting was applied
 # and passed after, with no change to this file.
 name: dependency-review
 
@@ -31,8 +40,8 @@ jobs:
   dependency-review:
     name: Review dependency changes
     runs-on: ubuntu-latest
-    # Public repositories have the entitlement, but the organisation must have
-    # applied its security features to them; private ones must opt in here.
+    # Public repositories have the entitlement, but it still has to be switched
+    # on (see the header); private ones must opt in here.
     if: ${{ !github.event.repository.private || vars.GHAS_ENABLED == 'true' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
