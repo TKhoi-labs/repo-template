@@ -193,7 +193,39 @@ expect_row ci "🟡" "missing file"
 expect_row ci "missing" "missing file names the file"
 
 # ---------------------------------------------------------------------------
-# 6. missing manifest is fatal, not silently "all complete"
+# 6. codeowners_team gates its file
+#
+# The contributing module ships CODEOWNERS only when an owner is named, so
+# health has to read that answer rather than require the file unconditionally:
+# otherwise every repository generated with the default would report itself
+# incomplete for a file it was never meant to have.
+# ---------------------------------------------------------------------------
+echo "== codeowners gating =="
+fixture coownerless
+sed -i 's/^module_contributing: false/module_contributing: true/' "$BUILD/coownerless/.copier-answers.yml"
+printf '# Contributing\n\nHow to contribute.\n' >"$BUILD/coownerless/CONTRIBUTING.md"
+decline_all "$BUILD/coownerless"
+run_health "$BUILD/coownerless"
+expect_rc 0 "codeowners: no owner named"
+expect_row contributing "✅" "codeowners: complete without the file"
+
+fixture coowner
+sed -i 's/^module_contributing: false/module_contributing: true/' "$BUILD/coowner/.copier-answers.yml"
+sed -i "s|^codeowners_team:.*|codeowners_team: '@example/maintainers'|" "$BUILD/coowner/.copier-answers.yml"
+printf '# Contributing\n\nHow to contribute.\n' >"$BUILD/coowner/CONTRIBUTING.md"
+decline_all "$BUILD/coowner"
+run_health "$BUILD/coowner"
+expect_rc 2 "codeowners: owner named, file absent"
+expect_row contributing "🟡" "codeowners: incomplete with an owner and no file"
+expect_row contributing "CODEOWNERS" "codeowners: names the missing file"
+
+printf '* @example/maintainers\n' >"$BUILD/coowner/.github/CODEOWNERS"
+run_health "$BUILD/coowner"
+expect_rc 0 "codeowners: owner named and file present"
+expect_row contributing "✅" "codeowners: complete once the file exists"
+
+# ---------------------------------------------------------------------------
+# 7. missing manifest is fatal, not silently "all complete"
 # ---------------------------------------------------------------------------
 echo "== missing manifest =="
 fixture nomanifest

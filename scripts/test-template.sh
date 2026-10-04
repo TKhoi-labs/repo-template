@@ -115,6 +115,9 @@ expect_absent "$BUILD/core-only/cliff.toml"
 echo "== all-on =="
 on_args=()
 for m in "${MODULES[@]}"; do on_args+=(-d "module_$m=true"); done
+# A CODEOWNERS owner has no default, so the all-on render names one explicitly.
+# The default — no owner, and therefore no file — is covered just below.
+on_args+=(-d "codeowners_team=@example/maintainers")
 render all-on "${on_args[@]}"
 expect_file "$BUILD/all-on/.github/workflows/ci.yml"
 expect_file "$BUILD/all-on/.github/workflows/commitlint.yml"
@@ -129,6 +132,23 @@ expect_file "$BUILD/all-on/.commitlintrc.json"
 expect_file "$BUILD/all-on/renovate.json"
 expect_file "$BUILD/all-on/.devcontainer/devcontainer.json"
 expect_file "$BUILD/all-on/.github/CODEOWNERS"
+
+# ---------------------------------------------------------------------------
+# 2b. no owner: contributing on with the empty default -> no CODEOWNERS at all
+#
+# The default is empty because no owner is right for both an organisation (an
+# organisation handle is not a valid owner, and a named team may not exist) and
+# a personal account (which has no teams). Verified against GitHub's own
+# validator: @<org> answers "Unknown owner", exactly like a user that does not
+# exist.
+# ---------------------------------------------------------------------------
+echo "== codeowners owner =="
+render no-owner -d module_contributing=true
+expect_file "$BUILD/no-owner/CONTRIBUTING.md"
+expect_absent "$BUILD/no-owner/.github/CODEOWNERS"
+expect_contains "$BUILD/no-owner/.copier-answers.yml" "codeowners_team: ''"
+# shellcheck disable=SC2016  # a Markdown code span, not shell syntax
+expect_contains "$BUILD/no-owner/CONTRIBUTING.md" 'no `.github/CODEOWNERS`'
 
 # ---------------------------------------------------------------------------
 # 3. DAG closure: security/release/ops each render with ci present

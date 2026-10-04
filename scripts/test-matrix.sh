@@ -262,6 +262,51 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# 5. Clearing the recorded owner removes CODEOWNERS on update
+#
+# The owner has no default, so a repository that already carries CODEOWNERS
+# clears the answer rather than naming one. Copier has to delete the file for
+# that to hold, and the module's promise now depends on it, so it is verified
+# rather than assumed.
+# ---------------------------------------------------------------------------
+echo "== codeowners removal =="
+CW="$BUILD/codeowners"
+rm -rf "$CW"
+# shellcheck disable=SC2086
+$COPIER copy --defaults -d project_name=codeowners -d org_slug=example \
+  -d workflow_ref=1111111111111111111111111111111111111111 \
+  -d module_contributing=true -d codeowners_team=@example/maintainers \
+  "$TEMPLATE" "$CW" >/dev/null 2>&1
+
+if [ -f "$CW/.github/CODEOWNERS" ]; then
+  ok "codeowners: rendered when an owner is named"
+else
+  bad "codeowners: no file rendered for a named owner"
+fi
+
+# copier update never re-asks a question, so the recorded answer is what decides
+# whether the file survives. The adopter clears it; the tree stays clean, because
+# an update applies its diff to committed state.
+sed -i "s|^codeowners_team:.*|codeowners_team: ''|" "$CW/.copier-answers.yml"
+(
+  cd "$CW"
+  git init -q .
+  git add -A
+  git -c user.email=test@example.invalid -c user.name=Tester commit -qm "with owner"
+) >/dev/null 2>&1
+
+rc=0
+( cd "$CW" && $COPIER update --defaults --trust . ) >"$BUILD/update-codeowners.log" 2>&1 || rc=$?
+if [ "$rc" -ne 0 ]; then
+  bad "codeowners: copier update exited $rc"
+  tail -3 "$BUILD/update-codeowners.log" | sed 's/^/        /'
+elif [ -e "$CW/.github/CODEOWNERS" ]; then
+  bad "codeowners: update kept CODEOWNERS after the answer was cleared"
+else
+  ok "codeowners: update removes the file once the answer is empty"
+fi
+
+# ---------------------------------------------------------------------------
 echo
 printf 'passed %d, failed %d\n' "$pass" "$fail"
 [ "$fail" -eq 0 ] || exit 1

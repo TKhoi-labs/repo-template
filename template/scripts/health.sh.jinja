@@ -37,6 +37,15 @@ enabled() {
   grep -Eq "^[[:space:]]*module_$1:[[:space:]]*true[[:space:]]*$" "$ANSWERS"
 }
 
+# An answer given as empty is recorded as '' — read that as unset. Only string
+# answers that gate a file rather than a module need this: codeowners_team
+# decides whether CODEOWNERS is generated at all.
+answer_set() {
+  local line
+  line=$(grep -E "^[[:space:]]*$1:[[:space:]]*" "$ANSWERS" | head -n 1) || return 1
+  [ -n "$(printf '%s' "$line" | cut -d: -f2- | tr -d "[:space:]\"'")" ]
+}
+
 # Files owned by each module. Only consulted for modules that are enabled, so
 # a list may safely name files that do not exist in this repository.
 module_files() {
@@ -63,7 +72,13 @@ module_files() {
       printf '%s\n' docs/architecture.md docs/adr/README.md
       ;;
     contributing)
-      printf '%s\n' CONTRIBUTING.md .github/CODEOWNERS
+      printf '%s\n' CONTRIBUTING.md
+      # CODEOWNERS is generated only when an owner was named. No owner can be
+      # guessed: an organisation handle is not a valid CODEOWNERS owner, a named
+      # team may not exist, and a personal account has no teams.
+      if answer_set codeowners_team; then
+        printf '%s\n' .github/CODEOWNERS
+      fi
       ;;
     env)
       printf '%s\n' .devcontainer/devcontainer.json

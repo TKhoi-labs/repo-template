@@ -31,7 +31,7 @@ Reviews use [Conventional Comments](https://conventionalcomments.org/). A commen
 machine-visible instead of buried in tone.
 
 ## Code ownership
-
+{% if codeowners_team %}
 `.github/CODEOWNERS` names `{{ codeowners_team }}` as the owner of everything in this
 repository. GitHub rejects a CODEOWNERS file that names an owner which does not exist, or that
 it cannot resolve:
@@ -41,16 +41,33 @@ Unknown owner on line 2: make sure the team @<org>/<team> exists, is publicly vi
 and has write access to the repository
 ```
 
-So that team must exist **before** this file means anything, it must be visible to the
+So that owner must exist **before** this file means anything, it must be visible to the
 repository, and it must have write access. Until then, GitHub reports the repository as having
 a broken CODEOWNERS file, and a branch protection rule requiring code owner review can block
 every pull request.
 
 An owner must be a user with write access (`@username`) or a visible team with write access
-(`@org/team-name`); an organisation handle on its own is not a valid owner. On a personal
-account there are no teams, so name the account's user. If you are not ready to name an owner,
-delete the file: an owner that does not exist is worse than no owner, because it makes the file
-invalid rather than merely advisory.
+(`@org/team-name`); an organisation handle on its own is not a valid owner. If that owner stops
+existing, delete the file: an owner that does not exist is worse than no owner, because it
+makes the file invalid rather than merely advisory.
+{% else %}
+This repository has no `.github/CODEOWNERS`, because no owner can be guessed. A valid owner is
+a visible team with write access (`@org/team-name`) or a user with write access (`@username`).
+An organisation handle on its own is not an owner at all, and a personal account has no teams,
+so no default would be right for both.
+
+Name an owner when you have one — re-run the template with `codeowners_team` set, or write the
+file yourself:
+
+```text
+# .github/CODEOWNERS
+* @acme/maintainers
+```
+
+An owner that does not exist is worse than no owner: GitHub reports the repository as having a
+broken CODEOWNERS file, and a branch protection rule requiring code owner review then blocks
+every pull request.
+{% endif %}
 
 ## Generated files
 

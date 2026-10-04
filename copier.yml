@@ -170,14 +170,20 @@ module_ops:
     module_ops requires module_ci: deploy pipelines are CI jobs.
     {% endif %}
 
-# CODEOWNERS cannot be derived: it needs a real owner with write access.
+# CODEOWNERS cannot be derived, and it cannot be defaulted either. A valid owner
+# is a team or a user with write access, an organisation handle is not an owner
+# at all, and a personal account has no teams — so every non-empty default is
+# wrong for some account. Empty generates no CODEOWNERS file, which is the only
+# state that is correct for both.
 codeowners_team:
   type: str
   help: >-
-    Owner for .github/CODEOWNERS: a team that is visible and has write
-    access ("@acme/maintainers"), or a single user ("@alice"). A personal
-    account has no teams, so use "@<username>".
-  default: "@{{ org_slug }}/maintainers"
+    Owner for .github/CODEOWNERS, or empty for no CODEOWNERS file. A valid
+    owner is a visible team with write access ("@acme/maintainers") or a user
+    with write access ("@alice"). An organisation handle on its own is not a
+    valid owner, and a personal account has no teams, so a personal repository
+    normally leaves this empty.
+  default: ""
   when: "{{ module_contributing }}"
 
 # ---------------------------------------------------------------------------
