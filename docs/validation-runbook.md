@@ -485,6 +485,14 @@ which the README and the generated `CONTRIBUTING.md` both now say. Existing repo
 otherwise unaffected: `copier update` never re-asks, so every recorded answer stands, and no
 migration clears one — an adopter who created the team would have lost a working file.
 
+**Resolved live, 2026-10-04.** The team the old default named now exists, and the validator is
+clean. `@TKhoi-labs/maintainers` was created `privacy: closed`, given `TanKhoiTV` as a
+maintainer, and granted **push** on all six repositories; `codeowners/errors` went from three
+`Unknown owner` rows to none. That is the three requirements of GitHub's own error message
+satisfied in order — exists, visible, write access — and none of them is derivable from the
+repository. The org had **zero teams** before this, which is why the file had never resolved;
+like §5.10, the missing piece was organisation state, not template content.
+
 ### 5.5 `gitleaks` requires a licence for organisations — **resolved: take the free key**
 
 Every push in an org-owned repository failed:

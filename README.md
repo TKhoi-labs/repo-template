@@ -82,6 +82,19 @@ Copier asks for:
 | `module_commits`, `module_ci`, `module_deps`, `module_docs`, `module_contributing`, `module_env`, `module_security`, `module_release`, `module_ops` | the nine modules — see the table below |
 | `codeowners_team` | asked only when `contributing` is on; **empty by default**, and empty means no `.github/CODEOWNERS` is generated, because no owner is valid for both an organisation and a personal account |
 
+If you do name a team, it has to exist, be visible and be granted write access before GitHub will
+accept the file — none of which this repository can derive, and the most common way to get it
+wrong is to name a team nobody created:
+
+```bash
+gh api -X POST /orgs/<org>/teams -f name=maintainers -f privacy=closed
+gh api -X PUT /orgs/<org>/teams/maintainers/repos/<org>/<repo> -f permission=push
+```
+
+`privacy: closed` is "visible to the org"; a `secret` team cannot own files. Write access is per
+repository, so grant it on each one that carries the file. Check any repository with
+`gh api repos/<org>/<repo>/codeowners/errors` — it answers `Unknown owner` until all three hold.
+
 The template refuses to render an inconsistent answer set. `--defaults` will **fail** on
 purpose, because `ci` defaults to on and `workflow_ref` has no safe default:
 
