@@ -117,7 +117,7 @@ you now own, permanently.
 | **core** | always | `justfile`, `scripts/health.sh`, `lefthook.yml`, `settings.yml`, issue forms, the deferrals ADR |
 | **commits** | you want enforced history | commitlint config + a `commitlint` workflow |
 | **ci** | any automated check at all | a thin caller of the org's shared workflow |
-| **deps** | the repo has any dependency | Renovate config + dependency review. **In an organisation**, dependency review also needs the org's Advanced Security features applied to repositories — see below |
+| **deps** | the repo has any dependency | Renovate config + dependency review. The config only works with the [Renovate app](https://github.com/apps/renovate) installed — the file alone updates nothing, which is the gap this template had itself until it added its own `renovate.json`. **In an organisation**, dependency review also needs the org's Advanced Security features applied to repositories — see below |
 | **docs** | architecture exists | `docs/architecture.md` and an ADR index |
 | **contributing** | you accept outside contributions | `CONTRIBUTING.md`, branch-protection hardening, and `.github/CODEOWNERS` **only when you name an owner** |
 | **env** | contributors need reproducibility | a devcontainer |

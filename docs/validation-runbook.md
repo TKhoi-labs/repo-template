@@ -163,7 +163,7 @@ Run against a new organisation on the **free** plan, template `v0.2.1`. Probes: 
 | P1 publish with tags | **pass** | `v0.1.0` … `v0.2.1` |
 | P2 shared workflow | **pass** | `TKhoi-labs/.github`, SHA `19f45b68e4ca46d42d881caee72f998f353ccaaf` |
 | P5 variables | **pass** | `COPIER_SYNC_ENABLED`, `COPIER_SYNC_AUTO_MERGE`, `GHAS_ENABLED` |
-| P6 org Actions policy | **pass** | `enabled_repositories: all`, `allowed_actions: all`, **`sha_pinning_required: false`** |
+| P6 org Actions policy | **pass, and now enforcing** | `enabled_repositories: all`, `allowed_actions: all`, **`sha_pinning_required: true`** — enabled 2026-10-04 and verified live: a probe step using `actions/checkout@v4` was refused with *"all actions must be pinned to a full-length commit SHA"*. Until then this was `false`, so the pinning ADR-0009 depends on rested on convention |
 | P7 required checks | **pass** | `ci / ci` required on both probes; auto-merge then merged on green |
 
 Two by-products worth keeping. **Item 9 is the live proof that the `cliff.toml` fix in §1

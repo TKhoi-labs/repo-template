@@ -70,7 +70,9 @@ push, so the job's `GITHUB_TOKEN` is not left in the local git config.
   and a reviewer checking a pin bump should verify the SHA matches the claimed version.
 - Pin updates require the `deps` module. Without Renovate, pins silently age. This is an
   explicit coupling: `security` (which measures the pins) is more useful alongside `deps`
-  (which updates them).
+  (which updates them). The template learned the cost of that coupling itself: with no updater of
+  its own, four of its seven action pins had fallen behind their newest major by the time one was
+  added, and those are the pins every generated repository receives.
 - A shared-workflow fix can no longer be rolled out by moving a tag. It requires a `_migrations`
   entry plus the sync pull requests. This is accepted deliberately: with a mutable tag, "roll out
   a fix to the whole fleet instantly" and "compromise the whole fleet instantly" are the same
@@ -78,5 +80,11 @@ push, so the job's `GITHUB_TOKEN` is not left in the local git config.
 - Repositories calling the shared workflow must supply a 40-character SHA, because
   `copier update --defaults` does not re-ask questions and therefore never refreshes it on its
   own.
-- **Deferred:** automating the SHA resolution so hand-written workflows cannot accidentally use
-  a tag. Trigger: the first time a tag reference reaches the default branch by mistake.
+- **Resolved — and not by automating the resolution.** The organisation sets
+  `sha_pinning_required`, so GitHub itself refuses an action that is not a full-length SHA. Verified
+  by a probe rather than by reading the flag back: a step using `actions/checkout@v4` was rejected
+  with *"The action actions/checkout@v4 is not allowed in TKhoi-labs/repo-template because all
+  actions must be pinned to a full-length commit SHA."* This is stronger than resolving SHAs for
+  the author, because the mistake cannot land at all. It is the owning organisation's policy,
+  though: a generated repository inherits it only if its own organisation sets the same flag, so
+  the runbook's P6 keeps the step and the evidence for that.
