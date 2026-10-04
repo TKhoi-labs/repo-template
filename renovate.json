@@ -33,7 +33,7 @@
       "description": "Pinned CLI tools in workflow and devcontainer commands. `pipx install pkg==1.2.3` is a string, not a manifest, so no built-in manager sees it and the pin would rot unnoticed.",
       "managerFilePatterns": ["/\\.github/workflows/.+\\.ya?ml$/", "/devcontainer\\.json/"],
       "matchStrings": [
-        "pipx install \"?(?<depName>[A-Za-z0-9_.-]+)==(?<currentValue>[0-9][0-9A-Za-z_.-]*)\"?"
+        "pipx install [^A-Za-z0-9]*?(?<depName>[A-Za-z0-9_.-]+)==(?<currentValue>[0-9][0-9A-Za-z_.-]*)"
       ],
       "datasourceTemplate": "pypi"
     },
