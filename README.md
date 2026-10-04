@@ -29,7 +29,7 @@ recorded ref at all and fails outright.
 | Requirement | Why |
 | :--- | :--- |
 | `copier` 9.0+ (`pipx install copier`) | the generator |
-| An org `.github` repository with a `workflow_call` workflow | the `ci` module calls it; the `security`, `release` and `ops` modules are CI jobs |
+| An org or user `.github` repository with a `workflow_call` workflow | the `ci` module calls it; the `security`, `release` and `ops` modules are CI jobs |
 | The **commit SHA** of that workflow | `workflow_ref` is pinned to a SHA, never a tag (ADR-0009) |
 | `just` and `grep` in the generated repo | `just health` needs nothing else — no `yq`, no `jq`, no linter |
 
@@ -38,6 +38,27 @@ Get the SHA:
 ```bash
 gh api repos/<org>/.github/commits/main --jq .sha
 ```
+
+If that repository has no callable workflow yet, [runbook P2](docs/validation-runbook.md) has a
+minimal `workflow_call` workflow to start from.
+
+**On a personal account**, the same flow works with a few translations:
+
+- Set `org_slug` to your username. `<you>/.github` fills the shared-workflow role, so `ci` still
+  resolves; if you would rather not maintain one, turn `ci` off — which also turns off
+  `security`, `release` and `ops`, because they are CI jobs.
+- With `contributing`, set `codeowners_team` to `@<username>`. A personal account has no teams,
+  so the default `@<org>/maintainers` cannot resolve, and GitHub rejects a CODEOWNERS file that
+  names an owner it cannot find.
+- Lower `required_approving_review_count` from `2`. You cannot approve your own pull request on
+  a personal repository, so a rule asking for two approvals blocks every merge.
+- `deps`: dependency review is free on public repositories; a **private** personal repository
+  needs GitHub Advanced Security, and the job is skipped otherwise (`GHAS_ENABLED`).
+- `security`: gitleaks needs no licence on a personal account, and Scorecard does not publish
+  results for a private repository.
+- Branch protection on a **private** personal repository needs a paid plan; public is free.
+- The sync GitHub App is created under your account and installed on it; `COPIER_SYNC_*` live on
+  the repository rather than the organisation.
 
 ### 2. Copy the template
 
