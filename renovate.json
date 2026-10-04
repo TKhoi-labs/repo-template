@@ -1,0 +1,61 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "commitMessagePrefix": "chore(deps):",
+  "labels": ["dependency"],
+  "schedule": ["before 6am on monday"],
+  "packageRules": [
+    {
+      "description": "The same grouping the payload ships to generated repositories. These pins are the ones consumers receive, so they are held to the same review shape.",
+      "matchManagers": ["github-actions"],
+      "groupName": "github actions"
+    },
+    {
+      "description": "ADR-0009 pins every `uses:` to a commit SHA with the version as a trailing comment. Renovate must keep both halves in step, which means digest pinning on.",
+      "matchManagers": ["github-actions", "regex"],
+      "matchDatasources": ["github-tags"],
+      "pinDigests": true
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Pinned actions inside the payload's `.jinja` workflow files. The github-actions manager only reads real workflow filenames, so without this the pins the template ships to every generated repository would never be updated.",
+      "managerFilePatterns": ["/^template/.+\\.jinja$/", "/^template/.+\\.ya?ml$/"],
+      "matchStrings": [
+        "uses: (?<depName>[^@\\s]+)@(?<currentDigest>[0-9a-f]{40})\\s*#\\s*(?<currentValue>v?[0-9][0-9.]*)"
+      ],
+      "datasourceTemplate": "github-tags",
+      "versioningTemplate": "semver-coerced"
+    },
+    {
+      "customType": "regex",
+      "description": "Pinned CLI tools in workflow and devcontainer commands. `pipx install pkg==1.2.3` is a string, not a manifest, so no built-in manager sees it and the pin would rot unnoticed.",
+      "managerFilePatterns": ["/\\.github/workflows/.+\\.ya?ml$/", "/devcontainer\\.json/"],
+      "matchStrings": [
+        "pipx install \"?(?<depName>[A-Za-z0-9_.-]+)==(?<currentValue>[0-9][0-9A-Za-z_.-]*)\"?"
+      ],
+      "datasourceTemplate": "pypi"
+    },
+    {
+      "customType": "regex",
+      "description": "actionlint, installed with `go install`. The module path is named explicitly because the command points at a package, which a Go datasource cannot resolve from the string alone.",
+      "managerFilePatterns": ["/\\.github/workflows/.+\\.ya?ml$/"],
+      "matchStrings": [
+        "go install github\\.com/rhysd/actionlint/cmd/actionlint@(?<currentValue>v[0-9][0-9.]*)"
+      ],
+      "depNameTemplate": "github.com/rhysd/actionlint",
+      "datasourceTemplate": "go"
+    },
+    {
+      "customType": "regex",
+      "description": "shfmt, installed with `go install`, for the same reason as actionlint.",
+      "managerFilePatterns": ["/\\.github/workflows/.+\\.ya?ml$/"],
+      "matchStrings": [
+        "go install mvdan\\.cc/sh/v3/cmd/shfmt@(?<currentValue>v[0-9][0-9.]*)"
+      ],
+      "depNameTemplate": "mvdan.cc/sh/v3",
+      "datasourceTemplate": "go"
+    }
+  ]
+}
