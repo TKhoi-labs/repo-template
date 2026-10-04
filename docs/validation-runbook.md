@@ -148,6 +148,15 @@ Run against a new organisation on the **free** plan, template `v0.2.1`. Probes: 
 (`core` + `commits` + `ci` + `deps`), `probe-allon` (all modules), `probe-conflict`
 (deliberately diverged). Items 5–7 were only reachable after two template fixes (§5.3, §5.4).
 
+**Probe state, 2026-10-04.** `probe-allon` is the live sync target and is kept at the current tag.
+`probe-min` (recorded `v0.3.0`), `probe-graph` and `probe-conflict` are **archived** — the results
+they produced are recorded above, and a read-only repository proves nothing new. `probe-conflict`
+became evidence for [ADR-0011](adr/0011-provide-an-exit-from-the-template.md) on its way out: it was
+ejected for real, so its `.copier-answers.yml` and its sync workflow are gone from GitHub and
+`copier update` refuses with *"Cannot update because cannot obtain old template references from
+`.copier-answers.yml`."* Archiving is reversible, and an archived probe can be unarchived if a case
+needs re-running.
+
 | Item | Result | Evidence |
 | :--- | :--- | :--- |
 | 1 devcontainer | **pass** | built on every push since CI was added; inside it `just 1.58.0`, `git-cliff 2.14.2` and `copier 9.18.2` all resolve, and `just health` returns 1 as documented. **The first run failed** — the container had never worked (§5.9) |
