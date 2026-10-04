@@ -3,6 +3,7 @@
   "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
   "commitMessagePrefix": "chore(deps):",
   "labels": ["dependency"],
+  "timezone": "Asia/Ho_Chi_Minh",
   "schedule": ["before 6am on monday"],
   "packageRules": [
     {
