@@ -41,6 +41,10 @@ CONFIGS=(
   "lib-oss|commits ci deps docs contributing env security release"
   "internal-service|commits ci deps env ops"
   "script|commits docs"
+  # A personal account is not an organisation: the shared workflow comes from
+  # <user>/.github, there are no teams, and no CODEOWNERS owner is guessed. The
+  # third field is that account handle.
+  "personal|$MODULES|alice"
 )
 
 pass=0
@@ -50,9 +54,10 @@ bad() { printf '  FAIL  %s\n' "$1"; fail=$((fail + 1)); }
 
 count_files() { find "$1" -type f | wc -l | tr -d ' '; }
 
-render_config() { # name, enabled-modules
+render_config() { # name, enabled-modules, org or user handle
   local name="$1"
   local enable="$2"
+  local owner="${3:-example}"
   local args=() m
   for m in $MODULES; do
     case " $enable " in
@@ -64,7 +69,7 @@ render_config() { # name, enabled-modules
   # shellcheck disable=SC2086
   $COPIER copy --defaults \
     -d "project_name=$(printf '%s' "$name" | tr '+' '-')" \
-    -d org_slug=example -d workflow_ref="$WORKFLOW_SHA" \
+    -d "org_slug=$owner" -d workflow_ref="$WORKFLOW_SHA" \
     "${args[@]}" "$TEMPLATE" "$BUILD/$name" >/dev/null 2>&1
 }
 
@@ -75,16 +80,52 @@ rm -rf "$BUILD"
 mkdir -p "$BUILD"
 make_template_snapshot "$ROOT" "$TEMPLATE"
 
-echo "== render 14 configurations =="
+echo "== render 15 configurations =="
 for entry in "${CONFIGS[@]}"; do
   name="${entry%%|*}"
-  enable="${entry#*|}"
-  if render_config "$name" "$enable"; then
+  rest="${entry#*|}"
+  enable="${rest%%|*}"
+  if [ "${rest#*|}" = "$rest" ]; then owner=""; else owner="${rest#*|}"; fi
+  if render_config "$name" "$enable" "$owner"; then
     ok "rendered $name"
   else
     bad "could not render $name"
   fi
 done
+
+# ---------------------------------------------------------------------------
+# 0. A personal account renders the same payload
+#
+# The template was built against an organisation, so the personal path is
+# asserted rather than assumed: the shared workflow has to resolve under a user
+# handle and no CODEOWNERS owner may be invented for an account with no teams.
+# ---------------------------------------------------------------------------
+echo "== personal account =="
+P="$BUILD/personal"
+if [ -d "$P" ]; then
+  if grep -q '^org_slug: alice$' "$P/.copier-answers.yml"; then
+    ok "personal: org_slug records the user handle"
+  else
+    bad "personal: org_slug did not record the user handle"
+  fi
+  if grep -q "alice/.github/.github/workflows/ci.yml@$WORKFLOW_SHA" "$P/.github/workflows/ci.yml"; then
+    ok "personal: the shared workflow resolves under the user"
+  else
+    bad "personal: ci.yml does not call alice/.github"
+  fi
+  if [ -e "$P/.github/CODEOWNERS" ]; then
+    bad "personal: CODEOWNERS was generated without an owner"
+  else
+    ok "personal: no CODEOWNERS is generated"
+  fi
+  if grep -q "name: personal" "$P/.github/settings.yml"; then
+    ok "personal: settings.yml names the repository"
+  else
+    bad "personal: settings.yml is not coherent"
+  fi
+else
+  bad "personal: the configuration did not render"
+fi
 
 # ---------------------------------------------------------------------------
 # 1. Ownership: no file is produced by two modules

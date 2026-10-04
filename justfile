@@ -27,13 +27,18 @@ test-rendered:
 test-docs:
     scripts/test-docs.sh
 
+# Exercise the exit from the template: what ejecting removes, what it keeps, and
+# that a detached repository cannot be updated back into a generated one.
+test-eject:
+    scripts/test-eject.sh
+
 # Run every check on the template itself.
-test: test-template test-health test-matrix test-rendered test-docs
+test: test-template test-health test-matrix test-rendered test-docs test-eject
 
 # Lint this template repo.
 lint:
     yamllint copier.yml .github/workflows/template-ci.yml
-    shellcheck scripts/test-template.sh scripts/test-health.sh scripts/test-matrix.sh scripts/test-rendered.sh scripts/test-docs.sh scripts/lib/template-snapshot.sh
+    shellcheck scripts/test-template.sh scripts/test-health.sh scripts/test-matrix.sh scripts/test-rendered.sh scripts/test-docs.sh scripts/test-eject.sh scripts/lib/template-snapshot.sh
 
 # Remove generated artifacts.
 clean:

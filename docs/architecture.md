@@ -178,9 +178,19 @@ Two deliberate choices:
 `COPIER_SYNC_ENABLED=false` pauses scheduled syncs for one repository while leaving
 `workflow_dispatch` working, so a paused repository can still be synced deliberately.
 
+**Synchronisation is optional, including after the fact.** `scripts/eject.sh` detaches a
+repository from the template: it removes the answers file, the sync workflow, the health report
+and the generation-time ADR, edits the references to them it can rewrite deterministically, and
+reports the prose it will not touch. Copier cannot do this itself — `copier update` never deletes
+a file, so no answer can remove anything — which is why the exit is a script the repository runs
+on itself. After it runs there is no answers file for `copier update` to resolve, so the coupling
+is gone rather than merely dormant. [ADR-0011](adr/0011-provide-an-exit-from-the-template.md) has
+the boundaries: the ADR skeleton and the tooling stay, and nothing is rewritten that would need a
+judgement about meaning.
+
 ## Testing
 
-Five suites, all in `scripts/`, orchestrated by `just test` and re-run by CI on every push and
+Six suites, all in `scripts/`, orchestrated by `just test` and re-run by CI on every push and
 pull request (`.github/workflows/template-ci.yml`). Their design rule is that a check must be
 able to fail for a reason you can act on — so each one covers a class of defect that reading the
 files did not catch.
@@ -188,10 +198,11 @@ files did not catch.
 | Suite | Proves |
 | :--- | :--- |
 | `test-template` | 14 configurations render; module content is authored; rendered YAML lints |
-| `test-health` | every health state and exit code, against fixtures |
-| `test-matrix` | ownership disjointness, SHA pinning across all configs, `copier update` idempotency, `_migrations` |
+| `test-health` | every health state and exit code, against fixtures, including the answer that gates `CODEOWNERS` |
+| `test-matrix` | ownership disjointness, SHA pinning across all configs including a personal account, `copier update` idempotency, `_migrations` |
 | `test-rendered` | actionlint, zizmor, git-cliff, `just`, and the conflict guard, against rendered output |
 | `test-docs` | the README's own commands, run; every question, module, ADR and link checked |
+| `test-eject` | the exit path: what `scripts/eject.sh` removes, what it keeps, and that an ejected repository cannot be updated back |
 
 CI adds one job the suites cannot cover locally without a container runtime: it renders a
 repository with the `env` module enabled, builds its devcontainer, and verifies that the

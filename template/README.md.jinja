@@ -11,3 +11,23 @@
 1. Replace this README with something that tells a reader what this repo is for.
 2. Run `just health` and resolve every module it reports as incomplete.
 3. Resolve every `TODO` row in `docs/adr/0001-initial-deferrals.md`.
+
+## Leaving the template
+
+This repository is maintained by the template it came from: a scheduled workflow runs
+`copier update` and opens a pull request when the template changes. If you would rather keep
+what you have and stop syncing:
+
+```bash
+just eject                # print what would change
+just eject -- --yes       # apply
+```
+
+That removes the answers file, the sync workflow, the module health report and the ADR that
+records generation-time module decisions, and drops the references to them in the justfile,
+the git hooks, `.github/CODEOWNERS` and the ADR index. Everything else stays: the workflows, the
+devcontainer, the docs, the settings and your own files. The ADR skeleton stays too, because
+`docs/adr/README.md` tells you to copy it.
+
+Prose is not rewritten for you — the script prints the files that still talk about the template
+so you can edit them. Ejecting is one-way: with no answers file, `copier update` no longer runs.

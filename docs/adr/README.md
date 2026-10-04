@@ -28,6 +28,7 @@ Copy `0000-template.md` to the next free number, or run `adr new "<title>"` if y
 | [0008](0008-assume-github-with-a-devcontainer-env-module.md) | Assume GitHub, and satisfy local tooling with a devcontainer | Accepted |
 | [0009](0009-pin-github-actions-to-commit-shas.md) | Pin GitHub Actions to commit SHAs | Accepted |
 | [0010](0010-treat-code-scanning-and-code-quality-as-organisation-state.md) | Treat code scanning and code quality as organisation-owned state | Accepted |
+| [0011](0011-provide-an-exit-from-the-template.md) | Provide an exit from the template | Accepted |
 
 ## The rule for deferrals
 

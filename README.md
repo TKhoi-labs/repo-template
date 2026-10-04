@@ -13,8 +13,10 @@ still a stub, and a workflow opens a pull request when the template changes.
 
 | | |
 | :--- | :--- |
-| Version | `v0.4.0` |
-| Local checks | `just test` — five suites, see [Working on this template](#working-on-this-template) |
+| Version | `v0.5.0` |
+| Local checks | `just test` — six suites, see [Working on this template](#working-on-this-template) |
+| Adapts to the account | renders for an **organisation** or a **personal account**; asserted for both, since the shared workflow, the CODEOWNERS owner and the security features differ |
+| Can be left | `just eject` in a generated repository detaches it: no sync, no module tracking, nothing generated any more |
 | Verified against a live org | **14 of 15 items fully verified**, with item 3 partly: the Settings app applies the repository feature block and the labels, but not `branches:` (§5.10). All on a free-plan org — see the execution record in [`docs/validation-runbook.md`](docs/validation-runbook.md) |
 
 **Copier copies the latest Git tag, not the working tree.** A change merged to `main` does
@@ -232,6 +234,13 @@ stops that file being rendered and leaves the existing copy in place. Delete it 
 commit. Verified in `scripts/test-matrix.sh` by turning a module off and watching its files
 survive the update.
 
+**A repository can leave.** `just eject` in a generated repository detaches it: the answers file,
+the sync workflow, the health report and the generation-time ADR go, and the references to them
+in the justfile, the git hooks, `CODEOWNERS` and the ADR index are edited away. Everything else
+stays, prose it cannot safely rewrite is listed for the maintainer, and `copier update` no longer
+runs afterwards. See [ADR-0011](docs/adr/0011-provide-an-exit-from-the-template.md) and
+`scripts/test-eject.sh`, which runs the whole thing against disposable renders.
+
 ### Branch protection is applied by hand
 
 `.github/settings.yml` declares its protection block, and the Settings app does **not** currently
@@ -265,7 +274,7 @@ conflict locally and re-run.
 ## Working on this template
 
 ```bash
-just test     # every check: rendering, module gating, health, matrix, rendered artifacts, docs
+just test     # every check: rendering, module gating, health, matrix, rendered artifacts, docs, the exit path
 just lint     # yamllint + shellcheck
 just clean
 ```
@@ -273,10 +282,11 @@ just clean
 | Recipe | Checks |
 | :--- | :--- |
 | `test-template` | renders core-only and all-on, asserts module content, lints rendered YAML |
-| `test-health` | the five health states against fixtures |
-| `test-matrix` | 14 configurations, ownership disjointness, SHA pinning, `copier update` idempotency, answer migration |
+| `test-health` | the five health states against fixtures, including the CODEOWNERS answer gating its file |
+| `test-matrix` | 15 configurations including a personal account, ownership disjointness, SHA pinning, `copier update` idempotency, answer migration |
 | `test-rendered` | actionlint, zizmor, git-cliff, `just`, and the conflict guard, against rendered output |
 | `test-docs` | the README's own commands, run; every question, module and ADR checked against the tree; the `Version` row checked against the tags |
+| `test-eject` | what `scripts/eject.sh` removes, what it keeps, and that a detached repository cannot be updated back into a generated one |
 
 CI runs the same suites on every push and pull request
 (`.github/workflows/template-ci.yml`) — so a change is checked without anyone remembering to run
@@ -289,7 +299,7 @@ uncommitted work and are not affected by tags placed on this repository.
 **After merging a change, tag it** — otherwise no generated repository receives it:
 
 ```bash
-git tag -a v0.4.0 -m "..." && git push --follow-tags
+git tag -a v0.5.0 -m "..." && git push --follow-tags
 ```
 
 Then read [`CONTRIBUTING.md`](CONTRIBUTING.md) before changing module content.

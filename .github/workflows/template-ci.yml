@@ -63,7 +63,7 @@ jobs:
           # package manager to satisfy a default.
           COPIER: copier
         run: |
-          for suite in test-template test-health test-matrix test-rendered test-docs; do
+          for suite in test-template test-health test-matrix test-rendered test-docs test-eject; do
             echo "=== $suite ==="
             "scripts/$suite.sh"
           done

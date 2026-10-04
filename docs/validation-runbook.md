@@ -4,9 +4,10 @@ Phase 7 exists because the local suite proves everything that *can* be proven wi
 GitHub organisation, and nothing that cannot. This document is the procedure for converting
 the remaining claims into verified ones.
 
-`just test` runs five suites, re-run by CI on every push: rendering, module gating, the DAG, file
+`just test` runs six suites, re-run by CI on every push: rendering, module gating, the DAG, file
 ownership, action pinning, the five-state health surface, `copier update` idempotency, answer
-migration, workflow linting, the rendered-artifact guards in §1, and the documentation checks.
+migration, workflow linting, the rendered-artifact guards in §1, the documentation checks, and the
+exit path that detaches a repository from the template.
 
 ---
 
@@ -201,8 +202,10 @@ just --version && git-cliff --version && copier --version && just health
 - **Expected:** all four succeed.
 - **Failure signature:** a feature reference that does not resolve, `sudo` unavailable in
   `postCreateCommand`, or the `just` installer writing to a directory not on `PATH`.
-- **Evidence:** the command output. **Fix:** adjust `postCreateCommand`; consider promoting
-  this to a CI job using the devcontainer CLI.
+- **Evidence:** the command output. **Fix:** applied — the devcontainer is built in
+  `.github/workflows/template-ci.yml` on every push, which is how it was found to have never
+  worked at all (§5.9). The local procedure above still works for a maintainer with a container
+  runtime; CI is what makes it happen without one.
 
 ### Item 2 — a tagged copy produces a working repository
 
