@@ -47,7 +47,10 @@ expect_absent() {
   fi
 }
 expect_contains() {
-  if grep -q -- "$2" "$1" 2>/dev/null; then
+  # -F: every caller passes literal text (a Jinja snippet, a JSON fragment, a
+  # message). As a BRE, `"matchManagers": ["copier"]` is a bracket expression
+  # that matches nothing, so the check silently reports a present rule missing.
+  if grep -Fq -- "$2" "$1" 2>/dev/null; then
     ok "$(basename "$1") contains: $2"
   else
     bad "$(basename "$1") missing: $2"
@@ -206,6 +209,17 @@ expect_contains "$BUILD/all-on/.github/workflows/gitleaks.yml" "gitleaks/gitleak
 expect_contains "$BUILD/all-on/.github/workflows/dependency-review.yml" "dependency-review-action"
 expect_contains "$BUILD/all-on/.github/workflows/release.yml" "git-cliff"
 expect_contains "$BUILD/all-on/renovate.json" "pinGitHubActionDigests"
+# The built-in copier manager must stay off. `.copier-answers.yml` records the
+# Copier `gh:` alias, which Renovate cannot convert to a git URL, so the lookup
+# fails with "no-result" on every repository generated from this template. The
+# sync workflow owns template bumps and gates conflicts; Renovate's copier
+# updater does not. test-rendered asserts the manager is disabled inside the
+# same packageRule, which grep alone cannot tell.
+expect_contains "$BUILD/all-on/renovate.json" '"matchManagers": ["copier"]'
+expect_contains "$BUILD/all-on/renovate.json" '"enabled": false'
+# A schedule with no timezone runs in UTC by accident, which is how this
+# drifted: the root config set one and the payload it ships did not.
+expect_contains "$BUILD/all-on/renovate.json" '"timezone": "Asia/Ho_Chi_Minh"'
 expect_contains "$BUILD/all-on/cliff.toml" "conventional_commits"
 expect_contains "$BUILD/all-on/.gitleaks.toml" "useDefault"
 expect_contains "$BUILD/all-on/.devcontainer/devcontainer.json" "devcontainers/base"

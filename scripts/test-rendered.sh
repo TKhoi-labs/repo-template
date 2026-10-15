@@ -252,6 +252,48 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# 6. The rendered Renovate config is valid JSON and disables the manager this
+#    template cannot support
+#
+# test-template greps for the pieces; grep cannot tell a rule that exists from
+# a rule written into the same object, and it cannot notice a Jinja edit that
+# breaks the JSON. This reads the file and asserts the pairing.
+#
+# The built-in copier manager must stay off: `.copier-answers.yml` records the
+# Copier `gh:` alias, which Renovate cannot convert to a git URL, so the lookup
+# fails with "no-result" on every generated repository. The sync workflow owns
+# template bumps and runs its update with --conflict=rej; Renovate's copier
+# updater has no equivalent gate.
+# ---------------------------------------------------------------------------
+echo "== renovate config =="
+RENOVATE_JSON="$BUILD/all-on/renovate.json"
+if command -v python3 >/dev/null 2>&1; then
+  if python3 - "$RENOVATE_JSON" <<'PY' >"$BUILD/renovate-check.log" 2>&1
+import json
+import sys
+
+with open(sys.argv[1]) as fh:
+    config = json.load(fh)
+
+rules = config.get("packageRules", [])
+copier = [r for r in rules if "copier" in r.get("matchManagers", [])]
+assert copier, "no packageRule matches the copier manager"
+assert all(r.get("enabled") is False for r in copier), (
+    "the copier packageRule is present but does not disable the manager"
+)
+assert config.get("timezone"), "no timezone is set; the schedule would run in UTC"
+PY
+  then
+    ok "all-on: renovate.json is valid JSON, disables copier, and sets a timezone"
+  else
+    bad "all-on: renovate.json failed its semantic check"
+    sed 's/^/        /' "$BUILD/renovate-check.log" | head -10
+  fi
+else
+  skip "python3 unavailable (needed for the renovate.json semantic check)"
+fi
+
+# ---------------------------------------------------------------------------
 echo
 printf 'passed %d, failed %d\n' "$pass" "$fail"
 [ "$fail" -eq 0 ] || exit 1

@@ -13,7 +13,7 @@ still a stub, and a workflow opens a pull request when the template changes.
 
 | | |
 | :--- | :--- |
-| Version | `v0.6.0` |
+| Version | `v0.6.1` |
 | Local checks | `just test` — six suites, see [Working on this template](#working-on-this-template) |
 | Adapts to the account | rendered **and pushed to a real personal account**, as well as to the organisation; the matrix asserts both, and the live run confirmed where they differ: no CODEOWNERS is invented, gitleaks passes with no licence, and the dependency graph is a per-repository setting |
 | Can be left | `just eject` in a generated repository detaches it: no sync, no module tracking, nothing generated any more |
@@ -150,7 +150,7 @@ you now own, permanently.
 | **core** | always | `justfile`, `scripts/health.sh`, `lefthook.yml`, `settings.yml`, issue forms, the deferrals ADR |
 | **commits** | you want enforced history | commitlint config + a `commitlint` workflow |
 | **ci** | any automated check at all | a thin caller of the org's shared workflow |
-| **deps** | the repo has any dependency | Renovate config + dependency review. The config only works with the [Renovate app](https://github.com/apps/renovate) installed — the file alone updates nothing. Dependency review must also be *switched on*, and the switch differs by account: the org's Advanced Security features applied to all repositories, or on a personal account the repository's own dependency graph — see below |
+| **deps** | the repo has any dependency | Renovate config + dependency review. The config only works with the [Renovate app](https://github.com/apps/renovate) installed — the file alone updates nothing. Dependency review must also be *switched on*, and the switch differs by account: the org's Advanced Security features applied to all repositories, or on a personal account the repository's own dependency graph — see below. The config deliberately leaves Renovate's built-in `copier` manager off: template version bumps belong to the sync workflow, and the Copier `gh:` alias recorded in `.copier-answers.yml` is not a URL Renovate can look up |
 | **docs** | architecture exists | `docs/architecture.md` and an ADR index |
 | **contributing** | you accept outside contributions | `CONTRIBUTING.md`, branch-protection hardening, and `.github/CODEOWNERS` **only when you name an owner** |
 | **env** | contributors need reproducibility | a devcontainer |
@@ -366,13 +366,24 @@ actions/dependency-review-action)"*, and that single update can never become a p
 pin's comment therefore names the release (`# v5.0.0`), which is the comment form to keep for any
 action that does not publish a floating major tag.
 
+**Template version bumps are not Renovate's job.** The payload's `renovate.json` disables
+Renovate's built-in `copier` manager. That manager reads `_src_path` from `.copier-answers.yml`
+and hands it to the `git-tags` datasource, and the `gh:<org>/repo-template` alias the README's own
+copy command records is not a URL it can use: `git-url-parse` reads the alias as an empty host and
+renders `https://:443/…`, which `new URL()` refuses. Every generated repository therefore reported
+*"Attempting to use non-git url for git operations"* and *"Failed to look up git-tags package
+gh:…: no-result"* on every run. Even with a fetchable URL it would be the wrong updater — the sync
+workflow runs `copier update` with `--conflict=rej` and fails a conflicted sync, and Renovate's
+copier updater has no equivalent gate. `test-rendered` asserts the rule is present *and* disabled,
+which a grep cannot tell.
+
 Rendering in the suites runs from a tagged snapshot of the working tree, so the tests see
 uncommitted work and are not affected by tags placed on this repository.
 
 **After merging a change, tag it** — otherwise no generated repository receives it:
 
 ```bash
-git tag -a v0.6.0 -m "..." && git push --follow-tags
+git tag -a v0.6.1 -m "..." && git push --follow-tags
 ```
 
 Bump the `Version` row at the top of this README in the same commit. `test-docs` asserts that it

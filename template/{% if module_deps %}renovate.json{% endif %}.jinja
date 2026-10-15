@@ -3,12 +3,18 @@
   "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
   "commitMessagePrefix": "chore(deps):",
   "labels": ["dependency"],
+  "timezone": "Asia/Ho_Chi_Minh",
   "schedule": ["before 6am on monday"],
   "packageRules": [
     {
       "description": "Group action bumps so they do not flood the review queue",
       "matchManagers": ["github-actions"],
       "groupName": "github actions"
+    },
+    {
+      "description": "Template version bumps are owned by .github/workflows/copier-sync.yml, which runs copier update with --conflict=rej and fails a conflicted sync. Renovate's built-in copier manager cannot read the gh: alias that .copier-answers.yml records, so its lookup fails with no-result on every repository generated from this template, and the updater it would run lacks the conflict gate. Leave it off.",
+      "matchManagers": ["copier"],
+      "enabled": false
     }
   ]
 }
