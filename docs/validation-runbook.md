@@ -845,6 +845,52 @@ has no lint or test recipe, because linting is this template's concern and not t
 genuine fleet-wide gate for a personal account would have to live in `<you>/.github` — which is a
 decision for the account owner, and is now the only thing between this path and a supported one.
 
+### 5.13 Renovate's copier lookup failed on every generated repository — **fixed in `v0.6.1`, then refuted with the real binary**
+
+Found from the outside, on `probe-allon`'s Mend page — the first place the payload's own defaults
+are visible as a dependency dashboard:
+
+```text
+⚠️ Attempting to use non-git url for git operations
+Failed to look up git-tags package gh:TKhoi-labs/repo-template: no-result
+  files affected: .copier-answers.yml
+```
+
+The mechanism is exact, not approximate. Renovate's built-in `copier` manager reads `_src_path`
+from `.copier-answers.yml` and hands it to the `git-tags` datasource, and the
+`gh:<org>/repo-template` alias the README's own copy command records is not a URL `git-url-parse`
+can express: the alias parses with an **empty host**, the manager then forces port `443` onto that
+empty host, and `toString` yields `https://:443/TKhoi-labs/repo-template`, which `new URL()`
+refuses. The conversion throws, `getPackageName` falls back to the raw string, and the datasource
+warns before a `git ls-remote` against `gh:…` fails.
+
+**Reproduced and refuted with Renovate 44.156.3**, the version the Mend app reported, against a
+clone of the probe's own config, with only that manager enabled:
+
+```bash
+LOG_LEVEL=debug RENOVATE_PLATFORM=local RENOVATE_ENABLED_MANAGERS=copier \
+  RENOVATE_REQUIRE_CONFIG=required RENOVATE_ONBOARDING=false \
+  npm exec --yes --package=renovate@44.156.3 -- renovate
+```
+
+| Config | `non-git url` warnings | `repoProblems` | What the manager did |
+| :--- | :--- | :--- | :--- |
+| `copier` rule removed (the payload as shipped) | 2 | 1 | looked up `gh:…` and failed |
+| `"matchManagers": ["copier"], "enabled": false` | **0** | **0** | read the file, extracted `gh:TKhoi-labs/repo-template`, logged `is disabled`, never looked it up |
+
+The manager still runs and still extracts the dependency; the package rule is what stops the
+lookup. That is why the fix is a disabled rule and not a rewritten `_src_path`: even a fetchable
+URL would leave Renovate running `copier update` itself, without the `--conflict=rej` gate the sync
+workflow depends on. `probe-allon` took the release through sync pull request #11, which changed
+`.copier-answers.yml` to `v0.6.1` and the payload's `renovate.json` and nothing else.
+
+**The invocation is the part worth keeping.** `RENOVATE_PLATFORM=local` must **not** be given
+`RENOVATE_REPOSITORIES`: it exits with *"repositories list not supported when platform=local"*
+before reading a single file. The first attempt here did exactly that and reported zero warnings
+for both configs — a result that looked like a pass and proved nothing, because a run that never
+started cannot fail. The control is what exposed it, and a control that is supposed to fail is not
+optional.
+
 ## 6. Evidence and exit criteria
 
 Phase 7 is complete when:
